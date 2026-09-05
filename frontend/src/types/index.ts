@@ -9,10 +9,12 @@ export interface User {
   id: number;
   email: string;
   username: string;
+  name?: string;
   role: UserRole;
   is_active: boolean;
   employee_id?: number;
   employee_name?: string;
+  last_login_at?: string;
 }
 
 export interface Employee {

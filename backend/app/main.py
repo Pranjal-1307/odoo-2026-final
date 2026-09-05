@@ -3,9 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.session import engine, Base
 import app.models  # Import models to ensure they register with Base
+from app.api.v1.api import api_router
+from app.db.seed import seed_db
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
+
+# Run seed data
+seed_db()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -23,6 +28,9 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+# Include API Routers
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/api/health")
 def health_check():

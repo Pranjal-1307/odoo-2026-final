@@ -89,6 +89,7 @@ class User(Base):
     role = Column(String(50), default=UserRole.EMPLOYEE.value, nullable=False)
     is_active = Column(Boolean, default=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
+    last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -125,13 +126,13 @@ class Employee(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = relationship("User", back_populates="employee", uselist=False)
+    user = relationship("User", back_populates="employee", uselist=False, foreign_keys="[User.employee_id]")
     manager = relationship("Employee", remote_side=[id], backref="subordinates")
     working_schedule = relationship("WorkingSchedule", back_populates="employees")
     contracts = relationship("Contract", back_populates="employee", cascade="all, delete-orphan")
     attendance_records = relationship("Attendance", back_populates="employee", cascade="all, delete-orphan")
-    time_off_requests = relationship("TimeOffRequest", back_populates="employee", cascade="all, delete-orphan")
-    time_off_allocations = relationship("TimeOffAllocation", back_populates="employee", cascade="all, delete-orphan")
+    time_off_requests = relationship("TimeOffRequest", back_populates="employee", cascade="all, delete-orphan", foreign_keys="[TimeOffRequest.employee_id]")
+    time_off_allocations = relationship("TimeOffAllocation", back_populates="employee", cascade="all, delete-orphan", foreign_keys="[TimeOffAllocation.employee_id]")
     payslips = relationship("Payslip", back_populates="employee", cascade="all, delete-orphan")
 
 
