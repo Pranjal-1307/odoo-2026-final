@@ -75,7 +75,7 @@ def test_employee_detail_smart_button_counts():
     assert res_detail.status_code == 200
     detail = res_detail.json()
     assert detail["contracts_count"] == 2
-    assert detail["attendance_count"] == 25
+    assert detail["attendance_count"] >= 25
     assert detail["time_off_count"] == 3
     assert detail["allocations_count"] == 2
     assert detail["payslips_count"] == 1

@@ -1,4 +1,5 @@
 from datetime import datetime, date, time, timedelta
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal, engine, Base
 from app.core.security import get_password_hash
@@ -215,20 +216,61 @@ def seed_db():
                 "bank_account_no": "58765432105",
                 "ifsc_code": "CHAS0007890",
                 "pan_no": "EFGHI5678J"
+            },
+            {
+                "employee_code": "EMP006",
+                "name": "Sara Khan",
+                "work_email": "sara.khan@peoplepay360.com",
+                "phone": "+1 (555) 013-6641",
+                "department": "Engineering",
+                "job_position": "Full Stack Developer",
+                "company": "PeoplePay360 Inc.",
+                "work_location": "Headquarters",
+                "employee_type": "Full-Time",
+                "status": EmployeeStatus.ACTIVE.value,
+                "working_schedule_id": standard_schedule.id,
+                "bank_name": "PNC Bank",
+                "bank_account_no": "48765432106",
+                "ifsc_code": "PNCC0001234",
+                "pan_no": "FGHIJ6789K"
+            },
+            {
+                "employee_code": "EMP007",
+                "name": "John Dsouza",
+                "work_email": "john.dsouza@peoplepay360.com",
+                "phone": "+1 (555) 016-3392",
+                "department": "Sales & Marketing",
+                "job_position": "Account Executive",
+                "company": "PeoplePay360 Inc.",
+                "work_location": "Headquarters",
+                "employee_type": "Full-Time",
+                "status": EmployeeStatus.ACTIVE.value,
+                "working_schedule_id": standard_schedule.id,
+                "bank_name": "US Bank",
+                "bank_account_no": "38765432107",
+                "ifsc_code": "USBK0005678",
+                "pan_no": "GHIJK7890L"
             }
         ]
+
 
         employee_map = {}
         for emp_data in demo_employees:
             existing_emp = db.query(Employee).filter(Employee.work_email == emp_data["work_email"]).first()
             if not existing_emp:
-                new_emp = Employee(**emp_data)
+                code_exists = db.query(Employee).filter(Employee.employee_code == emp_data["employee_code"]).first()
+                emp_dict = dict(emp_data)
+                if code_exists:
+                    max_id = db.query(func.max(Employee.id)).scalar() or 0
+                    emp_dict["employee_code"] = f"EMP{max_id + 1:03d}"
+                new_emp = Employee(**emp_dict)
                 db.add(new_emp)
                 db.flush()
                 employee_map[emp_data["work_email"]] = new_emp.id
             else:
                 existing_emp.working_schedule_id = standard_schedule.id
                 employee_map[emp_data["work_email"]] = existing_emp.id
+
 
         # Update manager relationships
         sarah_id = employee_map.get("admin@peoplepay360.com")
@@ -484,7 +526,12 @@ def seed_db():
                 db.add(payslip)
                 db.flush()
 
-            # Seed 25 Attendance records for Aarav Mehta
+            # Seed Attendance records
+            sara_id = employee_map.get("sara.khan@peoplepay360.com")
+            john_id = employee_map.get("john.dsouza@peoplepay360.com")
+            today_val = date.today()
+
+            # Seed 25 Historical Attendance records for Aarav Mehta
             if db.query(Attendance).filter(Attendance.employee_id == aarav_id).count() == 0:
                 base_day = date(2026, 1, 1)
                 count = 0
@@ -496,14 +543,98 @@ def seed_db():
                             date=cur_date,
                             check_in=datetime.combine(cur_date, time(9, 2)),
                             check_out=datetime.combine(cur_date, time(18, 5)),
-                            worked_hours=8.0,
-                            overtime_hours=0.0,
-                            status=AttendanceStatus.PRESENT.value
+                            worked_hours=8.05,
+                            expected_hours=8.0,
+                            overtime_hours=0.05,
+                            late_minutes=2,
+                            status=AttendanceStatus.PRESENT.value,
+                            notes="Standard workday"
                         ))
                         count += 1
                         if count >= 25:
                             break
                 db.flush()
+
+            # Seed Today's Multi-Employee Demo Attendances (Present, Partial, Checked In, Overtime)
+            today_demos = [
+                {
+                    "emp_id": aarav_id,
+                    "check_in": datetime.combine(today_val, time(9, 2)),
+                    "check_out": datetime.combine(today_val, time(18, 4)),
+                    "worked_hours": 8.03,
+                    "expected_hours": 8.0,
+                    "overtime_hours": 0.03,
+                    "late_minutes": 2,
+                    "status": AttendanceStatus.PRESENT.value,
+                    "notes": "Regular working day"
+                },
+                {
+                    "emp_id": sara_id,
+                    "check_in": datetime.combine(today_val, time(9, 10)),
+                    "check_out": datetime.combine(today_val, time(18, 0)),
+                    "worked_hours": 7.83,
+                    "expected_hours": 8.0,
+                    "overtime_hours": 0.0,
+                    "late_minutes": 10,
+                    "status": AttendanceStatus.PARTIAL.value,
+                    "notes": "Left slightly early"
+                },
+                {
+                    "emp_id": john_id,
+                    "check_in": datetime.combine(today_val, time(9, 0)),
+                    "check_out": None,
+                    "worked_hours": 0.0,
+                    "expected_hours": 8.0,
+                    "overtime_hours": 0.0,
+                    "late_minutes": 0,
+                    "status": AttendanceStatus.CHECKED_IN.value,
+                    "notes": "Active shift"
+                },
+                {
+                    "emp_id": neha_id,
+                    "check_in": datetime.combine(today_val, time(10, 15)),
+                    "check_out": datetime.combine(today_val, time(15, 20)),
+                    "worked_hours": 5.08,
+                    "expected_hours": 8.0,
+                    "overtime_hours": 0.0,
+                    "late_minutes": 75,
+                    "status": AttendanceStatus.PARTIAL.value,
+                    "notes": "Half day approved"
+                },
+                {
+                    "emp_id": marcus_id,
+                    "check_in": datetime.combine(today_val, time(8, 50)),
+                    "check_out": datetime.combine(today_val, time(19, 15)),
+                    "worked_hours": 9.42,
+                    "expected_hours": 8.0,
+                    "overtime_hours": 1.42,
+                    "late_minutes": 0,
+                    "status": AttendanceStatus.OVERTIME.value,
+                    "notes": "HR recruitment drive overtime"
+                }
+            ]
+
+            for td in today_demos:
+                if td["emp_id"]:
+                    exist_today = db.query(Attendance).filter(
+                        Attendance.employee_id == td["emp_id"],
+                        Attendance.date == today_val
+                    ).first()
+                    if not exist_today:
+                        db.add(Attendance(
+                            employee_id=td["emp_id"],
+                            date=today_val,
+                            check_in=td["check_in"],
+                            check_out=td["check_out"],
+                            worked_hours=td["worked_hours"],
+                            expected_hours=td["expected_hours"],
+                            overtime_hours=td["overtime_hours"],
+                            late_minutes=td["late_minutes"],
+                            status=td["status"],
+                            notes=td["notes"]
+                        ))
+            db.flush()
+
 
             # Seed Contracts for other demo employees if not present
             other_contracts_seed = [

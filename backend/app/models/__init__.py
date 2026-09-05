@@ -30,7 +30,10 @@ class ContractStatus(str, enum.Enum):
 
 class AttendanceStatus(str, enum.Enum):
     PRESENT = "present"
+    CHECKED_IN = "checked_in"
+    PARTIAL = "partial"
     LATE = "late"
+    OVERTIME = "overtime"
     ABSENT = "absent"
     INCOMPLETE = "incomplete"
     ON_LEAVE = "on_leave"
@@ -210,7 +213,9 @@ class Attendance(Base):
     check_in = Column(DateTime, nullable=True)
     check_out = Column(DateTime, nullable=True)
     worked_hours = Column(Float, default=0.0)
+    expected_hours = Column(Float, default=8.0)
     overtime_hours = Column(Float, default=0.0)
+    late_minutes = Column(Integer, default=0)
     status = Column(String(50), default=AttendanceStatus.PRESENT.value)
     is_manual_edit = Column(Boolean, default=False)
     notes = Column(Text, nullable=True)

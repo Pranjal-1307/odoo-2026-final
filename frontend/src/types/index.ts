@@ -98,15 +98,56 @@ export interface Attendance {
   employee_name: string;
   employee_code?: string;
   department?: string;
+  manager_id?: number;
+  manager_name?: string;
   date: string;
   check_in?: string;
   check_out?: string;
   worked_hours: number;
+  expected_hours: number;
   overtime_hours: number;
-  status: 'present' | 'late' | 'absent' | 'incomplete' | 'on_leave';
+  late_minutes: number;
+  status: 'present' | 'checked_in' | 'partial' | 'late' | 'overtime' | 'absent' | 'incomplete' | 'on_leave';
   is_manual_edit: boolean;
   notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
+
+export interface AttendanceCurrentStatus {
+  is_checked_in: boolean;
+  attendance_id?: number | null;
+  employee_id?: number | null;
+  employee_name?: string;
+  check_in?: string | null;
+  worked_seconds: number;
+  expected_hours: number;
+  status?: string | null;
+}
+
+export interface DepartmentAttendanceStats {
+  department: string;
+  total_employees: number;
+  present: number;
+  checked_in: number;
+  late: number;
+  overtime: number;
+  absent: number;
+  partial: number;
+}
+
+export interface AttendanceSummary {
+  total_records: number;
+  present_today: number;
+  checked_in_now: number;
+  late_today: number;
+  overtime_today: number;
+  partial_today: number;
+  total_worked_hours: number;
+  total_overtime_hours: number;
+  department_breakdown: DepartmentAttendanceStats[];
+}
+
 
 export interface TimeOffType {
   id: number;

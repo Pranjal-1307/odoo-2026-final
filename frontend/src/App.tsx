@@ -13,6 +13,9 @@ import { ContractsPage } from './pages/ContractsPage';
 import { ContractFormPage } from './pages/ContractFormPage';
 import { WorkingSchedulesPage } from './pages/WorkingSchedulesPage';
 import { WorkingScheduleFormPage } from './pages/WorkingScheduleFormPage';
+import { AttendancePage } from './pages/AttendancePage';
+import { AttendanceFormPage } from './pages/AttendanceFormPage';
+
 
 export const App: React.FC = () => {
   return (
@@ -123,15 +126,32 @@ export const App: React.FC = () => {
             />
             <Route path="/schedules" element={<Navigate to="/working-schedules" replace />} />
 
-            {/* Attendance & Time Off Routes */}
+            {/* Attendance Management Hub Routes */}
             <Route
               path="/attendance"
               element={
                 <ProtectedRoute>
-                  <DashboardPage />
+                  <AttendancePage />
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/attendance/new"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <AttendanceFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/attendance/:id"
+              element={
+                <ProtectedRoute>
+                  <AttendanceFormPage />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="/time-off/requests"
               element={

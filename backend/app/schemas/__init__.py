@@ -37,3 +37,17 @@ from app.schemas.working_schedule import (
     ScheduleCalculationRequest,
     ScheduleCalculationResponse
 )
+from app.schemas.attendance import (
+    AttendanceBase,
+    AttendanceCreate,
+    AttendanceUpdate,
+    CheckInRequest,
+    CheckOutRequest,
+    AttendanceResponse,
+    AttendanceDetailResponse,
+    AttendanceListResponse,
+    AttendanceCurrentStatusResponse,
+    DepartmentAttendanceStats,
+    AttendanceSummaryResponse
+)
+

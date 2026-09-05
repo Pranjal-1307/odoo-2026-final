@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Clock, LogIn, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { apiClient } from '../../services/api';
+import { attendanceService } from '../../services/attendanceService';
 
 export const QuickAttendanceWidget: React.FC = () => {
   const { user } = useAuth();
@@ -10,6 +10,7 @@ export const QuickAttendanceWidget: React.FC = () => {
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Live clock
   useEffect(() => {
@@ -27,37 +28,55 @@ export const QuickAttendanceWidget: React.FC = () => {
   }, [isCheckedIn, checkInTime]);
 
   // Fetch today's attendance status
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await apiClient.get('/attendance/my-status');
-      if (res.data.is_checked_in) {
+      const data = await attendanceService.getMyStatus();
+      if (data.is_checked_in && data.check_in) {
         setIsCheckedIn(true);
-        setCheckInTime(new Date(res.data.check_in));
+        const checkInDate = new Date(data.check_in);
+        setCheckInTime(checkInDate);
+        const now = new Date();
+        const diff = Math.floor((now.getTime() - checkInDate.getTime()) / 1000);
+        setElapsedSeconds(diff >= 0 ? diff : data.worked_seconds);
       } else {
         setIsCheckedIn(false);
         setCheckInTime(null);
         setElapsedSeconds(0);
       }
+      setErrorMessage(null);
     } catch {
-      // If endpoint not yet active, default to local state
+      // Ignore network errors on initial mount
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchStatus();
-  }, [user]);
+
+    // Listen for global attendance updates
+    const handleGlobalUpdate = () => {
+      fetchStatus();
+    };
+    window.addEventListener('attendance-updated', handleGlobalUpdate);
+    return () => window.removeEventListener('attendance-updated', handleGlobalUpdate);
+  }, [fetchStatus]);
 
   const handleCheckIn = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
-      await apiClient.post('/attendance/check-in');
+      const res = await attendanceService.checkIn();
       setIsCheckedIn(true);
-      setCheckInTime(new Date());
-    } catch {
-      // Local fallback for demo
-      setIsCheckedIn(true);
-      setCheckInTime(new Date());
+      if (res.check_in) {
+        setCheckInTime(new Date(res.check_in));
+      } else {
+        setCheckInTime(new Date());
+      }
+      window.dispatchEvent(new CustomEvent('attendance-updated'));
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Failed to check in';
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(null), 4000);
     } finally {
       setIsLoading(false);
     }
@@ -65,16 +84,17 @@ export const QuickAttendanceWidget: React.FC = () => {
 
   const handleCheckOut = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
-      await apiClient.post('/attendance/check-out');
+      await attendanceService.checkOut();
       setIsCheckedIn(false);
       setCheckInTime(null);
       setElapsedSeconds(0);
-    } catch {
-      // Local fallback for demo
-      setIsCheckedIn(false);
-      setCheckInTime(null);
-      setElapsedSeconds(0);
+      window.dispatchEvent(new CustomEvent('attendance-updated'));
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Failed to check out';
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(null), 4000);
     } finally {
       setIsLoading(false);
     }
@@ -88,40 +108,48 @@ export const QuickAttendanceWidget: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-lg text-white border border-white/15">
-      <div className="flex items-center gap-1.5 text-xs text-purple-100 font-mono">
-        <Clock className="w-3.5 h-3.5 text-emerald-300" />
-        <span>{currentTime || '09:00 AM'}</span>
+    <div className="relative">
+      <div className="flex items-center gap-3 bg-white/10 hover:bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-lg text-white border border-white/20 shadow-sm transition-all">
+        <div className="flex items-center gap-1.5 text-xs text-purple-100 font-mono font-medium">
+          <Clock className="w-3.5 h-3.5 text-emerald-300 animate-pulse" />
+          <span>{currentTime || '09:00:00 AM'}</span>
+        </div>
+
+        <div className="h-4 w-px bg-white/20" />
+
+        {isCheckedIn ? (
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-300 font-mono font-semibold bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>{formatElapsed(elapsedSeconds)}</span>
+            </div>
+            <button
+              onClick={handleCheckOut}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs px-2.5 py-1 rounded transition-all font-medium shadow-sm cursor-pointer disabled:opacity-50"
+              title="Click to Check Out"
+            >
+              {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />}
+              <span>Check Out</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleCheckIn}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs px-3 py-1 rounded transition-all font-medium shadow-sm cursor-pointer disabled:opacity-50"
+            title="Click to Check In"
+          >
+            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogIn className="w-3 h-3" />}
+            <span>Check In</span>
+          </button>
+        )}
       </div>
 
-      <div className="h-4 w-px bg-white/20" />
-
-      {isCheckedIn ? (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-xs text-emerald-300 font-mono font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{formatElapsed(elapsedSeconds)}</span>
-          </div>
-          <button
-            onClick={handleCheckOut}
-            disabled={isLoading}
-            className="flex items-center gap-1 bg-rose-600 hover:bg-rose-700 text-white text-xs px-2.5 py-1 rounded transition-colors font-medium shadow-sm cursor-pointer"
-            title="Check Out"
-          >
-            <LogOut className="w-3 h-3" />
-            <span>Check Out</span>
-          </button>
+      {errorMessage && (
+        <div className="absolute right-0 top-full mt-1.5 z-50 bg-rose-900/95 text-rose-100 text-xs px-3 py-1.5 rounded-md shadow-lg border border-rose-700 whitespace-nowrap animate-in fade-in slide-in-from-top-1">
+          {errorMessage}
         </div>
-      ) : (
-        <button
-          onClick={handleCheckIn}
-          disabled={isLoading}
-          className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded transition-colors font-medium shadow-sm cursor-pointer"
-          title="Check In"
-        >
-          <LogIn className="w-3 h-3" />
-          <span>Check In</span>
-        </button>
       )}
     </div>
   );
