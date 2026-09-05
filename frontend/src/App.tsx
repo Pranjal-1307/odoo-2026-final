@@ -7,6 +7,8 @@ import { LoginPage } from './pages/LoginPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
 import { UsersPage } from './pages/UsersPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { EmployeesPage } from './pages/EmployeesPage';
+import { EmployeeFormPage } from './pages/EmployeeFormPage';
 
 export const App: React.FC = () => {
   return (
@@ -38,12 +40,28 @@ export const App: React.FC = () => {
               }
             />
 
-            {/* HR / Payroll / Employee Sub-routes */}
+            {/* Employee Master Hub Routes */}
             <Route
               path="/employees"
               element={
                 <ProtectedRoute>
-                  <DashboardPage />
+                  <EmployeesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employees/new"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <EmployeeFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employees/:id"
+              element={
+                <ProtectedRoute>
+                  <EmployeeFormPage />
                 </ProtectedRoute>
               }
             />
