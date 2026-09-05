@@ -338,10 +338,27 @@ export interface PayrunStatusResponse {
   finalized_at?: string;
 }
 
+export interface CalculationTraceItem {
+  sequence: number;
+  rule_id?: number;
+  rule_code: string;
+  rule_name: string;
+  category: string;
+  computation_type: string;
+  status: string;
+  condition_applied: boolean;
+  inputs_used: Record<string, any>;
+  formula_or_rate?: string | null;
+  amount: number;
+  appears_on_payslip?: boolean;
+  employer_cost_flag?: boolean;
+  note?: string | null;
+}
+
 export interface Payslip {
   id: number;
   payslip_number: string;
-  payrun_id: number;
+  payrun_id?: number;
   payrun_name?: string;
   employee_id: number;
   employee_name: string;
@@ -350,19 +367,47 @@ export interface Payslip {
   job_position?: string;
   contract_id: number;
   salary_structure_id: number;
+  structure_name?: string;
   salary_structure_name?: string;
+  company?: string;
   period_start: string;
   period_end: string;
-  status: 'draft' | 'computed' | 'validated' | 'paid';
+  status: 'draft' | 'computed' | 'review' | 'confirmed' | 'validated' | 'finalized' | 'paid' | 'cancelled';
   worked_days: number;
   unpaid_leave_days: number;
   basic_salary: number;
+  total_earnings?: number;
   gross_salary: number;
   total_deductions: number;
   net_salary: number;
+  total_employer_contributions?: number;
+  total_employer_cost?: number;
+  
+  // Snapshots
+  employee_snapshot?: Record<string, any>;
+  contract_snapshot?: Record<string, any>;
+  attendance_snapshot?: {
+    scheduled_days?: number;
+    worked_days?: number;
+    absent_days?: number;
+    overtime_hours?: number;
+    total_worked_hours?: number;
+  };
+  time_off_snapshot?: {
+    paid_leave_days?: number;
+    unpaid_leave_days?: number;
+  };
+  calculation_trace?: CalculationTraceItem[];
+  
+  error_code?: string;
+  error_message?: string;
+  computed_at?: string;
+  finalized_at?: string;
   pdf_path?: string;
   email_sent: boolean;
   email_sent_at?: string;
+  created_at?: string;
+  updated_at?: string;
   lines?: PayslipLine[];
   warnings?: PayrollWarning[];
 }
@@ -376,6 +421,27 @@ export interface PayslipLine {
   category: string;
   sequence: number;
   amount: number;
+  quantity?: number;
+  rate?: number;
+  base_amount?: number;
+  total?: number;
+  calculation_type?: string;
+  calculation_expression?: string;
+  is_employer_contribution?: boolean;
+  created_at?: string;
+}
+
+export interface PayslipSummaryMetrics {
+  total_payslips: number;
+  draft_payslips: number;
+  computed_payslips: number;
+  validated_payslips: number;
+  finalized_payslips: number;
+  cancelled_payslips: number;
+  total_gross: number;
+  total_deductions: number;
+  total_net: number;
+  total_employer_cost: number;
 }
 
 export interface PayrollWarning {
@@ -388,3 +454,4 @@ export interface PayrollWarning {
   message: string;
   is_resolved: boolean;
 }
+

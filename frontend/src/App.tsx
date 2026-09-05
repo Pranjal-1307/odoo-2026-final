@@ -28,6 +28,9 @@ import { SalaryRuleFormPage } from './pages/SalaryRuleFormPage';
 import { PayrunsPage } from './pages/PayrunsPage';
 import { PayrunWizardPage } from './pages/PayrunWizardPage';
 import { PayrunDetailPage } from './pages/PayrunDetailPage';
+import { PayslipsPage } from './pages/PayslipsPage';
+import { PayslipDetailPage } from './pages/PayslipDetailPage';
+
 
 
 export const App: React.FC = () => {
@@ -290,10 +293,21 @@ export const App: React.FC = () => {
               path="/payroll/payslips"
               element={
                 <ProtectedRoute>
-                  <DashboardPage />
+                  <PayslipsPage />
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/payroll/payslips/:id"
+              element={
+                <ProtectedRoute>
+                  <PayslipDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/payslips" element={<Navigate to="/payroll/payslips" replace />} />
+            <Route path="/payslips/:id" element={<Navigate to="/payroll/payslips/:id" replace />} />
+
             {/* Salary Structures Hub Routes */}
             <Route
               path="/payroll/salary-structures"

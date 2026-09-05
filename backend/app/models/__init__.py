@@ -91,8 +91,12 @@ class PayrunEmployeeStatus(str, enum.Enum):
 class PayslipStatus(str, enum.Enum):
     DRAFT = "draft"
     COMPUTED = "computed"
+    REVIEW = "review"
+    CONFIRMED = "confirmed"
     VALIDATED = "validated"
+    FINALIZED = "finalized"
     PAID = "paid"
+    CANCELLED = "cancelled"
 
 
 # ==========================================
@@ -478,10 +482,11 @@ class Payslip(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     payslip_number = Column(String(50), unique=True, index=True, nullable=False)
-    payrun_id = Column(Integer, ForeignKey("payruns.id", ondelete="CASCADE"), nullable=False)
+    payrun_id = Column(Integer, ForeignKey("payruns.id", ondelete="CASCADE"), nullable=True)
     employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
     contract_id = Column(Integer, ForeignKey("contracts.id", ondelete="RESTRICT"), nullable=False)
     salary_structure_id = Column(Integer, ForeignKey("salary_structures.id", ondelete="RESTRICT"), nullable=False)
+    company = Column(String(100), default="PeoplePay360 Inc.")
     
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
@@ -490,10 +495,25 @@ class Payslip(Base):
     worked_days = Column(Float, default=0.0)
     unpaid_leave_days = Column(Float, default=0.0)
     basic_salary = Column(Float, default=0.0)
+    total_earnings = Column(Float, default=0.0)
     gross_salary = Column(Float, default=0.0)
     total_deductions = Column(Float, default=0.0)
     net_salary = Column(Float, default=0.0)
+    total_employer_contributions = Column(Float, default=0.0)
+    total_employer_cost = Column(Float, default=0.0)
     
+    # Snapshots & Trace
+    employee_snapshot = Column(JSON, nullable=True)
+    contract_snapshot = Column(JSON, nullable=True)
+    attendance_snapshot = Column(JSON, nullable=True)
+    time_off_snapshot = Column(JSON, nullable=True)
+    calculation_trace = Column(JSON, nullable=True)
+    
+    error_code = Column(String(100), nullable=True)
+    error_message = Column(Text, nullable=True)
+    
+    computed_at = Column(DateTime, nullable=True)
+    finalized_at = Column(DateTime, nullable=True)
     pdf_path = Column(String(500), nullable=True)
     email_sent = Column(Boolean, default=False)
     email_sent_at = Column(DateTime, nullable=True)
@@ -519,7 +539,17 @@ class PayslipLine(Base):
     rule_code = Column(String(50), nullable=False)
     category = Column(String(50), nullable=False)
     sequence = Column(Integer, default=10)
+    
     amount = Column(Float, default=0.0)
+    quantity = Column(Float, default=1.0)
+    rate = Column(Float, default=100.0)
+    base_amount = Column(Float, default=0.0)
+    total = Column(Float, default=0.0)
+    
+    calculation_type = Column(String(50), nullable=True)
+    calculation_expression = Column(Text, nullable=True)
+    is_employer_contribution = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     payslip = relationship("Payslip", back_populates="lines")
     rule = relationship("SalaryRule")
