@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --color-odoo-purple: #714B67;
+  --color-odoo-purpleDark: #5B3A52;
+  --color-odoo-purpleLight: #875A7B;
+  --color-odoo-teal: #017E84;
+  --color-odoo-tealDark: #006267;
+  --color-odoo-tealLight: #E6F4F5;
+  --color-odoo-bg: #F8F9FA;
+  --color-odoo-card: #FFFFFF;
+  --color-odoo-border: #E2E8F0;
+  --color-odoo-text: #2D3748;
+  --color-odoo-muted: #718096;
+  --color-odoo-sidebar: #252B36;
+}
+
+:root {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background-color: #F8F9FA;
+  color: #1E293B;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Custom Odoo Component Utility Classes */
+.odoo-btn-primary {
+  @apply bg-odoo-purple hover:bg-odoo-purpleDark text-white font-medium px-4 py-2 rounded-md shadow-sm transition-all duration-150 text-sm flex items-center justify-center gap-2;
+}
+
+.odoo-btn-secondary {
+  @apply bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium px-4 py-2 rounded-md shadow-sm transition-all duration-150 text-sm flex items-center justify-center gap-2;
+}
+
+.odoo-btn-teal {
+  @apply bg-odoo-teal hover:bg-odoo-tealDark text-white font-medium px-4 py-2 rounded-md shadow-sm transition-all duration-150 text-sm flex items-center justify-center gap-2;
+}
+
+.odoo-badge-green {
+  @apply bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+}
+
+.odoo-badge-yellow {
+  @apply bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+}
+
+.odoo-badge-red {
+  @apply bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+}
+
+.odoo-badge-blue {
+  @apply bg-sky-50 text-sky-700 border border-sky-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+}
+
+.odoo-badge-gray {
+  @apply bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+}
+
+.odoo-card {
+  @apply bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow transition-all duration-150;
+}
+
+.odoo-smart-btn {
+  @apply border border-slate-200 hover:border-odoo-purple hover:bg-purple-50/50 p-2.5 rounded-lg flex flex-col items-center justify-center min-w-[100px] transition-all duration-150 cursor-pointer text-center;
+}
