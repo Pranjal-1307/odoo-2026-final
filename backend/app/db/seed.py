@@ -419,6 +419,60 @@ def seed_db():
                             break
                 db.flush()
 
+            # Seed Contracts for other demo employees if not present
+            other_contracts_seed = [
+                {
+                    "email": "admin@peoplepay360.com",
+                    "code": "CNT-2026-001",
+                    "name": "Sarah Connor - Executive IT Contract 2026",
+                    "wage": 150000.0,
+                    "dept": "Executive / IT",
+                    "pos": "System Administrator & HR Director"
+                },
+                {
+                    "email": "payroll.manager@peoplepay360.com",
+                    "code": "CNT-2026-002",
+                    "name": "Vikram Malhotra - Payroll Manager Contract 2026",
+                    "wage": 120000.0,
+                    "dept": "Finance & Payroll",
+                    "pos": "Payroll Manager"
+                },
+                {
+                    "email": "payroll.user@peoplepay360.com",
+                    "code": "CNT-2026-003",
+                    "name": "Neha Patel - Payroll Specialist Contract 2026",
+                    "wage": 80000.0,
+                    "dept": "Finance & Payroll",
+                    "pos": "Payroll Specialist"
+                },
+                {
+                    "email": "hr.manager@peoplepay360.com",
+                    "code": "CNT-2026-004",
+                    "name": "Marcus Vance - HR Manager Contract 2026",
+                    "wage": 115000.0,
+                    "dept": "Human Resources",
+                    "pos": "HR Operations Manager"
+                }
+            ]
+
+            for seed_item in other_contracts_seed:
+                e_id = employee_map.get(seed_item["email"])
+                if e_id and db.query(Contract).filter(Contract.employee_id == e_id).count() == 0:
+                    db.add(Contract(
+                        contract_code=seed_item["code"],
+                        name=seed_item["name"],
+                        employee_id=e_id,
+                        department=seed_item["dept"],
+                        job_position=seed_item["pos"],
+                        start_date=date(2026, 1, 1),
+                        end_date=None,
+                        wage_per_month=seed_item["wage"],
+                        status=ContractStatus.RUNNING.value,
+                        working_schedule_id=standard_schedule.id,
+                        salary_structure_id=salary_structure.id
+                    ))
+            db.flush()
+
         db.commit()
         print("Database successfully seeded with standard schedules, roles, employees, and smart-button demo relationships.")
     except Exception as e:

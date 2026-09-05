@@ -112,11 +112,11 @@ export const Navbar: React.FC = () => {
                 <span>{isEmployee ? 'My Profile' : 'Employees'}</span>
               </NavLink>
 
-              {/* Contracts (HR & Admin only) */}
-              {canManageHR && (
+              {/* Contracts (HR, Payroll & Employee) */}
+              {(canManageHR || isEmployee) && (
                 <NavLink to="/contracts" className={navLinkClass}>
                   <FileText className="w-4 h-4" />
-                  <span>Contracts</span>
+                  <span>{isEmployee ? 'My Contracts' : 'Contracts'}</span>
                 </NavLink>
               )}
 

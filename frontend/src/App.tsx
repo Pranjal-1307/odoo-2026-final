@@ -9,6 +9,8 @@ import { UsersPage } from './pages/UsersPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { EmployeeFormPage } from './pages/EmployeeFormPage';
+import { ContractsPage } from './pages/ContractsPage';
+import { ContractFormPage } from './pages/ContractFormPage';
 
 export const App: React.FC = () => {
   return (
@@ -65,11 +67,29 @@ export const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
+
+            {/* Contract Management Hub Routes */}
             <Route
               path="/contracts"
               element={
+                <ProtectedRoute>
+                  <ContractsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contracts/new"
+              element={
                 <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
-                  <DashboardPage />
+                  <ContractFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contracts/:id"
+              element={
+                <ProtectedRoute>
+                  <ContractFormPage />
                 </ProtectedRoute>
               }
             />
