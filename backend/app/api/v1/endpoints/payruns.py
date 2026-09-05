@@ -428,3 +428,27 @@ def delete_draft_payrun(
         return None
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+# ----------------------------------------------------
+# 15. Bulk Send Payslip Emails (Module 11)
+# ----------------------------------------------------
+@router.post("/{payrun_id}/send-all-payslips", response_model=Dict[str, Any])
+def send_all_payslips_endpoint(
+    payrun_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permissions(Permissions.PAYRUN_VALIDATE)),
+):
+    """
+    Dispatches official finalized payslip emails with attached PDFs to all employees in the payrun.
+    """
+    from app.services.email_service import PayslipEmailService
+    try:
+        return PayslipEmailService.bulk_send_payrun_payslips(
+            db=db,
+            payrun_id=payrun_id,
+            user_id=current_user.id,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bulk payslip email dispatch failed: {str(e)}")
+

@@ -1,6 +1,7 @@
 from typing import List, Optional, Any, Dict
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_active_user
@@ -9,9 +10,15 @@ from app.schemas.payslip import (
     PayslipCreate,
     PayslipOut,
     PayslipLineOut,
+    PayslipDocumentOut,
+    PayslipEmailLogOut,
+    SendPayslipEmailRequest,
+    SendPayslipEmailResponse,
     PayslipSummaryMetrics,
 )
 from app.services.payslip_service import PayslipService, PayslipServiceException
+from app.services.pdf_service import PayslipPDFService
+from app.services.email_service import PayslipEmailService
 
 router = APIRouter()
 
@@ -82,6 +89,36 @@ def _format_payslip_out(payslip: Payslip) -> Dict[str, Any]:
                 "created_at": line.created_at,
             }
             for line in (payslip.lines or [])
+        ],
+        "documents": [
+            {
+                "id": doc.id,
+                "payslip_id": doc.payslip_id,
+                "document_type": doc.document_type,
+                "file_name": doc.file_name,
+                "file_path": doc.file_path,
+                "mime_type": doc.mime_type,
+                "file_size": doc.file_size,
+                "generated_at": doc.generated_at,
+                "generated_by": doc.generated_by,
+                "created_at": doc.created_at,
+            }
+            for doc in (payslip.documents or [])
+        ],
+        "email_logs": [
+            {
+                "id": el.id,
+                "payslip_id": el.payslip_id,
+                "recipient_email": el.recipient_email,
+                "subject": el.subject,
+                "status": el.status,
+                "sent_at": el.sent_at,
+                "failed_at": el.failed_at,
+                "error_message": el.error_message,
+                "sent_by": el.sent_by,
+                "created_at": el.created_at,
+            }
+            for el in (payslip.email_logs or [])
         ],
     }
 
@@ -281,3 +318,174 @@ def cancel_payslip_endpoint(
         return _format_payslip_out(payslip)
     except PayslipServiceException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+# =========================================================================
+# MODULE 11: PDF GENERATION & DOWNLOAD ENDPOINTS
+# =========================================================================
+
+@router.post("/{payslip_id}/generate-pdf", response_model=PayslipDocumentOut)
+def generate_payslip_pdf_endpoint(
+    payslip_id: int,
+    force_regenerate: bool = Query(False, description="Force re-rendering of the PDF file"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Generates and stores the official PDF document for a computed or finalized payslip.
+    """
+    if current_user.role == UserRole.EMPLOYEE.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Employees cannot trigger PDF generation.")
+
+    try:
+        _, _, doc_record = PayslipPDFService.generate_payslip_pdf(
+            db=db,
+            payslip_id=payslip_id,
+            user_id=current_user.id,
+            force_regenerate=force_regenerate,
+        )
+        return doc_record
+    except PayslipServiceException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation error: {str(e)}")
+
+
+@router.get("/{payslip_id}/pdf")
+def download_payslip_pdf_endpoint(
+    payslip_id: int,
+    download: bool = Query(False, description="If true, sets Content-Disposition attachment"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    """
+    Streams the official payslip PDF binary.
+    Enforces RBAC: Employees can ONLY download their own payslip PDF.
+    """
+    payslip = db.query(Payslip).filter(Payslip.id == payslip_id).first()
+    if not payslip:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payslip #{payslip_id} not found.")
+
+    # Strict RBAC Check
+    if current_user.role == UserRole.EMPLOYEE.value:
+        if payslip.employee_id != current_user.employee_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access Denied: You are not authorized to download this employee's payslip PDF."
+            )
+
+    try:
+        filename, pdf_bytes = PayslipPDFService.get_payslip_pdf_bytes(
+            db=db,
+            payslip_id=payslip.id,
+            user_id=current_user.id,
+        )
+        disp_type = "attachment" if download else "inline"
+        headers = {
+            "Content-Disposition": f'{disp_type}; filename="{filename}"',
+            "Content-Type": "application/pdf",
+        }
+        return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+    except PayslipServiceException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load PDF: {str(e)}")
+
+
+# =========================================================================
+# MODULE 11: EMAIL DELIVERY & AUDIT LOG ENDPOINTS
+# =========================================================================
+
+@router.post("/{payslip_id}/email", response_model=SendPayslipEmailResponse)
+def send_payslip_email_endpoint(
+    payslip_id: int,
+    payload: Optional[SendPayslipEmailRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Delivers the official finalized payslip PDF attached in a branded email to the employee.
+    Restricted to HR / Payroll Managers & Admins.
+    """
+    if current_user.role == UserRole.EMPLOYEE.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Employees cannot dispatch payslip emails.")
+
+    recipient_email = payload.recipient_email if payload else None
+    custom_subject = payload.subject if payload else None
+    custom_message = payload.custom_message if payload else None
+
+    try:
+        log_entry = PayslipEmailService.send_payslip_email(
+            db=db,
+            payslip_id=payslip_id,
+            recipient_email=recipient_email,
+            custom_subject=custom_subject,
+            custom_message=custom_message,
+            user_id=current_user.id,
+        )
+        return {
+            "payslip_id": payslip_id,
+            "status": log_entry.status,
+            "recipient_email": log_entry.recipient_email,
+            "subject": log_entry.subject,
+            "sent_at": log_entry.sent_at,
+            "error_message": log_entry.error_message,
+            "log_id": log_entry.id,
+        }
+    except PayslipServiceException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Email delivery error: {str(e)}")
+
+
+@router.post("/{payslip_id}/resend-email", response_model=SendPayslipEmailResponse)
+def resend_payslip_email_endpoint(
+    payslip_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Re-sends the official payslip email and records a fresh delivery audit log.
+    """
+    if current_user.role == UserRole.EMPLOYEE.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Employees cannot resend payslip emails.")
+
+    try:
+        log_entry = PayslipEmailService.resend_payslip_email(
+            db=db,
+            payslip_id=payslip_id,
+            user_id=current_user.id,
+        )
+        return {
+            "payslip_id": payslip_id,
+            "status": log_entry.status,
+            "recipient_email": log_entry.recipient_email,
+            "subject": log_entry.subject,
+            "sent_at": log_entry.sent_at,
+            "error_message": log_entry.error_message,
+            "log_id": log_entry.id,
+        }
+    except PayslipServiceException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Email resend error: {str(e)}")
+
+
+@router.get("/{payslip_id}/email-history", response_model=List[PayslipEmailLogOut])
+def get_payslip_email_history(
+    payslip_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Returns the complete chronological audit trail of all email delivery attempts for this payslip.
+    """
+    payslip = db.query(Payslip).filter(Payslip.id == payslip_id).first()
+    if not payslip:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Payslip #{payslip_id} not found.")
+
+    if current_user.role == UserRole.EMPLOYEE.value:
+        if payslip.employee_id != current_user.employee_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+
+    return PayslipEmailService.get_email_history(db=db, payslip_id=payslip_id)

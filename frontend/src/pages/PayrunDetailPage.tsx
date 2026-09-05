@@ -15,9 +15,12 @@ import {
   Lock,
   X,
   Receipt,
+  Mail,
+  Download,
 } from 'lucide-react';
 import { payrunService } from '../services/payrunService';
-import type { Payrun, PayrunEmployee } from '../types';
+import { payslipService } from '../services/payslipService';
+import type { Payrun, PayrunEmployee, BulkEmailPayrunResult } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 export const PayrunDetailPage: React.FC = () => {
@@ -28,6 +31,7 @@ export const PayrunDetailPage: React.FC = () => {
   const [payrun, setPayrun] = useState<Payrun | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'employees' | 'warnings' | 'payslips'>('overview');
 
   // Slide-over trace drawer
@@ -35,6 +39,11 @@ export const PayrunDetailPage: React.FC = () => {
   const [recalculatingEmpId, setRecalculatingEmpId] = useState<number | null>(null);
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+
+  // Bulk Email State (Module 11)
+  const [bulkEmailLoading, setBulkEmailLoading] = useState(false);
+  const [bulkEmailResult, setBulkEmailResult] = useState<BulkEmailPayrunResult | null>(null);
+  const [bulkEmailModalOpen, setBulkEmailModalOpen] = useState(false);
 
   const fetchPayrun = async () => {
     if (!id) return;
@@ -75,6 +84,8 @@ export const PayrunDetailPage: React.FC = () => {
       const finalized = await payrunService.finalizePayrun(payrun.id);
       setPayrun(finalized);
       setFinalizeModalOpen(false);
+      setSuccessMsg('Payrun finalized successfully! Official payslips generated and ready for distribution.');
+      setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Finalization failed');
       setFinalizeModalOpen(false);
@@ -96,6 +107,23 @@ export const PayrunDetailPage: React.FC = () => {
       setCancelModalOpen(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Bulk Email All Finalized Payslips
+  const handleBulkEmail = async () => {
+    if (!payrun) return;
+    setBulkEmailLoading(true);
+    setError(null);
+    try {
+      const result = await payslipService.bulkEmailPayrun(payrun.id);
+      setBulkEmailResult(result);
+      setBulkEmailModalOpen(true);
+      await fetchPayrun();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Bulk email delivery failed');
+    } finally {
+      setBulkEmailLoading(false);
     }
   };
 
@@ -149,6 +177,19 @@ export const PayrunDetailPage: React.FC = () => {
             </button>
           )}
 
+          {/* Module 11: Bulk Email All Employees Button */}
+          {isFinalized && canManagePayroll && (
+            <button
+              onClick={handleBulkEmail}
+              disabled={bulkEmailLoading}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs shadow-sm hover:shadow-md flex items-center gap-1.5 transition-all disabled:opacity-50"
+              title="Dispatches official payslips to all employees via email"
+            >
+              <Mail className={`w-3.5 h-3.5 ${bulkEmailLoading ? 'animate-bounce' : ''}`} />
+              <span>{bulkEmailLoading ? 'Sending Emails...' : 'Send All Payslips'}</span>
+            </button>
+          )}
+
           {!isFinalized && payrun.status !== 'cancelled' && canManagePayroll && (
             <>
               <button
@@ -170,6 +211,14 @@ export const PayrunDetailPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Success Alert */}
+      {successMsg && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-800 text-sm shadow-sm animate-fadeIn">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
 
       {/* Error Alert */}
       {error && (
@@ -390,6 +439,15 @@ export const PayrunDetailPage: React.FC = () => {
                             <RefreshCw className={`w-3.5 h-3.5 ${recalculatingEmpId === pe.employee_id ? 'animate-spin text-odoo-purple' : ''}`} />
                           </button>
                         )}
+                        {pe.payslip_id && (
+                          <button
+                            onClick={() => navigate(`/payroll/payslips/${pe.payslip_id}`)}
+                            className="p-1.5 text-slate-500 hover:text-odoo-purple hover:bg-slate-100 rounded-lg"
+                            title="View Payslip"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -424,6 +482,83 @@ export const PayrunDetailPage: React.FC = () => {
                 <span>No active payroll warnings or blocking diagnostics reported.</span>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 4: Generated Payslips                               */}
+        {/* ======================================================== */}
+        {activeTab === 'payslips' && isFinalized && (
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                Official locked payslip records generated from finalized Payrun #{payrun.id}.
+              </p>
+              <button
+                onClick={handleBulkEmail}
+                disabled={bulkEmailLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Dispatch All via Email</span>
+              </button>
+            </div>
+
+            <div className="border border-slate-200 rounded-xl overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-slate-50 text-[11px] uppercase tracking-wider font-semibold text-slate-500 border-b border-slate-200">
+                  <tr>
+                    <th className="py-2.5 px-4">Employee</th>
+                    <th className="py-2.5 px-4 text-right">Net Salary</th>
+                    <th className="py-2.5 px-4 text-center">Status</th>
+                    <th className="py-2.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payrun.employees?.filter(pe => pe.payslip_id).map((pe) => (
+                    <tr key={pe.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-slate-800">{pe.employee_name}</div>
+                        <div className="text-xs text-slate-400">{pe.employee_code} · {pe.employee_email || 'No email'}</div>
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-700">
+                        ₹{(pe.net_salary || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          FINALIZED
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={async () => {
+                              if (pe.payslip_id) {
+                                try {
+                                  await payslipService.downloadPdfFile(pe.payslip_id, `Payslip_${pe.employee_code}.pdf`);
+                                } catch (err: any) {
+                                  alert('Download error: ' + (err.response?.data?.detail || err.message));
+                                }
+                              }
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-odoo-purple hover:bg-purple-50 rounded-lg transition-all"
+                            title="Download PDF"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => pe.payslip_id && navigate(`/payroll/payslips/${pe.payslip_id}`)}
+                            className="px-2.5 py-1 text-xs font-semibold text-odoo-purple hover:bg-purple-50 rounded-lg border border-purple-200"
+                          >
+                            View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -544,6 +679,84 @@ export const PayrunDetailPage: React.FC = () => {
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm"
               >
                 Confirm Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Email Summary Modal (Module 11) */}
+      {bulkEmailModalOpen && bulkEmailResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-scaleIn">
+            <div className="p-6 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg">Bulk Email Dispatch Completed</h3>
+                  <p className="text-xs text-slate-500">
+                    Dispatched payslip PDF attachments across {bulkEmailResult.total_payslips} employees
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setBulkEmailModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-200 transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Total Payslips</span>
+                  <p className="text-xl font-bold text-slate-800 mt-0.5">{bulkEmailResult.total_payslips}</p>
+                </div>
+                <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200">
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase">Successfully Sent</span>
+                  <p className="text-xl font-bold text-emerald-700 mt-0.5">{bulkEmailResult.sent_count}</p>
+                </div>
+                <div className="bg-red-50 p-3 rounded-2xl border border-red-200">
+                  <span className="text-[10px] font-bold text-red-600 uppercase">Failed / Skipped</span>
+                  <p className="text-xl font-bold text-red-700 mt-0.5">{bulkEmailResult.failed_count}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Employee Delivery Statuses</h4>
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden max-h-60 overflow-y-auto">
+                  {bulkEmailResult.details.map((item, idx) => (
+                    <div key={idx} className="p-3 flex items-center justify-between text-xs bg-white hover:bg-slate-50">
+                      <div>
+                        <span className="font-semibold text-slate-800">{item.recipient_email}</span>
+                        {item.error_message && (
+                          <p className="text-[11px] text-red-600 mt-0.5">{item.error_message}</p>
+                        )}
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          item.status === 'SENT'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={() => setBulkEmailModalOpen(false)}
+                className="px-5 py-2 bg-odoo-purple text-white text-xs font-semibold rounded-xl hover:bg-purple-900 transition-all"
+              >
+                Close Summary
               </button>
             </div>
           </div>

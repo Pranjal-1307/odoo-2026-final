@@ -25,6 +25,63 @@ class PayslipLineOut(BaseModel):
         from_attributes = True
 
 
+class PayslipDocumentOut(BaseModel):
+    id: int
+    payslip_id: int
+    document_type: str
+    file_name: str
+    file_path: str
+    mime_type: str
+    file_size: int
+    generated_at: Optional[datetime] = None
+    generated_by: Optional[int] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PayslipEmailLogOut(BaseModel):
+    id: int
+    payslip_id: int
+    recipient_email: str
+    subject: str
+    status: str
+    sent_at: Optional[datetime] = None
+    failed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+    sent_by: Optional[int] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SendPayslipEmailRequest(BaseModel):
+    recipient_email: Optional[str] = Field(None, description="Optional override recipient email")
+    subject: Optional[str] = Field(None, description="Optional custom email subject")
+    custom_message: Optional[str] = Field(None, description="Optional custom message in email body")
+
+
+class SendPayslipEmailResponse(BaseModel):
+    payslip_id: int
+    status: str
+    recipient_email: str
+    subject: str
+    sent_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+    log_id: Optional[int] = None
+
+
+class BulkEmailPayrunResponse(BaseModel):
+    payrun_id: int
+    total_payslips: int
+    sent_count: int
+    failed_count: int
+    skipped_count: int
+    details: List[SendPayslipEmailResponse] = []
+
+
 class PayslipCreate(BaseModel):
     employee_id: int = Field(..., description="ID of employee")
     payrun_id: Optional[int] = Field(None, description="Optional associated payrun ID")
@@ -85,6 +142,8 @@ class PayslipOut(BaseModel):
     payrun_name: Optional[str] = None
     
     lines: List[PayslipLineOut] = []
+    documents: List[PayslipDocumentOut] = []
+    email_logs: List[PayslipEmailLogOut] = []
 
     class Config:
         from_attributes = True

@@ -61,6 +61,18 @@ def migrate_columns():
                 if col not in payrun_cols:
                     conn.exec_driver_sql(f"ALTER TABLE payruns ADD COLUMN {col} {col_type}")
 
+            # Check payslips table
+            payslip_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(payslips)").fetchall()}
+            payslip_cols_to_add = [
+                ("has_pdf", "BOOLEAN DEFAULT 0"),
+                ("pdf_generated_at", "DATETIME"),
+                ("email_sent", "BOOLEAN DEFAULT 0"),
+                ("email_sent_at", "DATETIME"),
+            ]
+            for col, col_type in payslip_cols_to_add:
+                if col not in payslip_cols:
+                    conn.exec_driver_sql(f"ALTER TABLE payslips ADD COLUMN {col} {col_type}")
+
             conn.commit()
     except Exception as e:
         print(f"Migration notice: {e}")

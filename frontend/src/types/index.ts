@@ -410,6 +410,53 @@ export interface Payslip {
   updated_at?: string;
   lines?: PayslipLine[];
   warnings?: PayrollWarning[];
+  documents?: PayslipDocument[];
+  email_logs?: PayslipEmailLog[];
+}
+
+export interface PayslipDocument {
+  id: number;
+  payslip_id: number;
+  document_type: string;
+  file_name: string;
+  file_path: string;
+  mime_type: string;
+  file_size: number;
+  generated_at?: string;
+  generated_by?: number;
+  created_at?: string;
+}
+
+export interface PayslipEmailLog {
+  id: number;
+  payslip_id: number;
+  recipient_email: string;
+  subject: string;
+  status: 'SENT' | 'FAILED' | 'QUEUED' | string;
+  sent_at?: string;
+  failed_at?: string;
+  error_message?: string;
+  sent_by?: number;
+  created_at?: string;
+}
+
+export interface SendPayslipEmailResponse {
+  payslip_id: number;
+  status: string;
+  recipient_email: string;
+  subject: string;
+  sent_at?: string;
+  error_message?: string;
+  log_id?: number;
+}
+
+export interface BulkEmailPayrunResult {
+  payrun_id: number;
+  total_payslips: number;
+  sent_count: number;
+  failed_count: number;
+  skipped_count: number;
+  details: SendPayslipEmailResponse[];
 }
 
 export interface PayslipLine {
@@ -454,4 +501,5 @@ export interface PayrollWarning {
   message: string;
   is_resolved: boolean;
 }
+
 

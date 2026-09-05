@@ -398,6 +398,7 @@ export const PayslipsPage: React.FC = () => {
                   <th className="py-3.5 px-4 text-right">Deductions</th>
                   <th className="py-3.5 px-4 text-right">Net Salary</th>
                   <th className="py-3.5 px-4 text-center">Status</th>
+                  <th className="py-3.5 px-4 text-center">Email</th>
                   <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
                 </tr>
               </thead>
@@ -467,17 +468,41 @@ export const PayslipsPage: React.FC = () => {
                       {getStatusBadge(slip.status)}
                     </td>
 
+                    <td className="py-3.5 px-4 text-center">
+                      {slip.email_sent ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          SENT
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-50 text-slate-400 border border-slate-200">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+
                     <td className="py-3.5 px-4 sm:px-6 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/payroll/payslips/${slip.id}`);
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-odoo-purple hover:bg-purple-50 rounded-lg transition-all"
-                        title="View Detailed Salary Breakdown"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await payslipService.downloadPdfFile(slip.id, `Payslip_${slip.payslip_number}.pdf`);
+                            } catch (err: any) {
+                              alert('Failed to download PDF: ' + (err.response?.data?.detail || err.message));
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-odoo-purple hover:bg-purple-50 rounded-lg transition-all"
+                          title="Download PDF"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => navigate(`/payroll/payslips/${slip.id}`)}
+                          className="p-1.5 text-slate-400 hover:text-odoo-purple hover:bg-purple-50 rounded-lg transition-all"
+                          title="View Details"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -17,23 +17,44 @@ import {
   X,
   TrendingUp,
   Percent,
+  Download,
+  Mail,
+  History,
+  FileText,
+  Send,
+  Eye,
 } from 'lucide-react';
-import { payslipService } from '../services/payslipService';
+import { payslipService, type SendPayslipEmailPayload } from '../services/payslipService';
 import { useAuth } from '../context/AuthContext';
-import type { Payslip } from '../types';
+import type { Payslip, PayslipEmailLog } from '../types';
 
 export const PayslipDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { canManagePayroll } = useAuth();
 
-
   const [payslip, setPayslip] = useState<Payslip | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [downloadLoading, setDownloadLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Modals state
   const [showTraceModal, setShowTraceModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+
+  // Email form state
+  const [emailLogs, setEmailLogs] = useState<PayslipEmailLog[]>([]);
+  const [emailForm, setEmailForm] = useState<SendPayslipEmailPayload>({
+    recipient_email: '',
+    subject: '',
+    custom_message: '',
+  });
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
 
   const fetchPayslip = useCallback(async () => {
     if (!id) return;
@@ -42,6 +63,12 @@ export const PayslipDetailPage: React.FC = () => {
     try {
       const data = await payslipService.getPayslip(Number(id));
       setPayslip(data);
+      if (data.email_logs) {
+        setEmailLogs(data.email_logs);
+      }
+      // initialize default email
+      const recipient = data.employee_snapshot?.work_email || '';
+      setEmailForm((prev) => ({ ...prev, recipient_email: recipient }));
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load payslip details.');
     } finally {
@@ -71,7 +98,11 @@ export const PayslipDetailPage: React.FC = () => {
 
   const handleFinalize = async () => {
     if (!payslip) return;
-    if (!window.confirm(`Are you sure you want to finalize Payslip #${payslip.payslip_number}? Finalized records are permanently locked against modifications.`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to finalize Payslip #${payslip.payslip_number}? Finalized records are permanently locked against modifications.`
+      )
+    ) {
       return;
     }
     setActionLoading(true);
@@ -104,6 +135,112 @@ export const PayslipDetailPage: React.FC = () => {
       setError(err.response?.data?.detail || 'Failed to cancel payslip.');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // PDF Download & Preview Handlers
+  // -------------------------------------------------------------
+  const handleDownloadPdf = async () => {
+    if (!payslip) return;
+    setDownloadLoading(true);
+    setError(null);
+    try {
+      const empCode = payslip.employee_snapshot?.employee_code || payslip.employee_code || 'EMP';
+      const cleanNum = payslip.payslip_number.replace(/\//g, '-');
+      const filename = `Payslip_${cleanNum}_${empCode}_${payslip.period_start.slice(0, 7)}.pdf`;
+      await payslipService.downloadPdfFile(payslip.id, filename);
+      setSuccessMsg('Official PDF downloaded successfully!');
+      setTimeout(() => setSuccessMsg(null), 3500);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to download payslip PDF.');
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
+  const handlePreviewPdf = async () => {
+    if (!payslip) return;
+    setDownloadLoading(true);
+    try {
+      const blob = await payslipService.getPdfBlob(payslip.id);
+      const url = window.URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+      setShowPdfPreviewModal(true);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load PDF preview.');
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
+  const closePdfPreview = () => {
+    if (pdfPreviewUrl) {
+      window.URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
+    }
+    setShowPdfPreviewModal(false);
+  };
+
+  // -------------------------------------------------------------
+  // Email Handlers
+  // -------------------------------------------------------------
+  const handleOpenEmailModal = () => {
+    if (!payslip) return;
+    setEmailForm({
+      recipient_email: payslip.employee_snapshot?.work_email || '',
+      subject: `Official Payslip for ${new Date(payslip.period_start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} — ${payslip.company || 'PeoplePay360 Inc.'}`,
+      custom_message: '',
+    });
+    setShowEmailModal(true);
+  };
+
+  const handleSendEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payslip) return;
+    setEmailSubmitting(true);
+    setError(null);
+    try {
+      const res = await payslipService.sendEmail(payslip.id, emailForm);
+      setSuccessMsg(`Official payslip PDF dispatched to ${res.recipient_email} successfully!`);
+      setShowEmailModal(false);
+      // Refresh details and email history
+      await fetchPayslip();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to send payslip email.');
+    } finally {
+      setEmailSubmitting(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (!payslip) return;
+    if (!window.confirm(`Resend payslip email to employee? A fresh audit log entry will be created.`)) {
+      return;
+    }
+    setActionLoading(true);
+    setError(null);
+    try {
+      const res = await payslipService.resendEmail(payslip.id);
+      setSuccessMsg(`Payslip email re-sent successfully to ${res.recipient_email}!`);
+      await fetchPayslip();
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to resend payslip email.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenHistoryModal = async () => {
+    if (!payslip) return;
+    try {
+      const history = await payslipService.getEmailHistory(payslip.id);
+      setEmailLogs(history);
+      setShowHistoryModal(true);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load email history.');
     }
   };
 
@@ -202,24 +339,58 @@ export const PayslipDetailPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Download Official PDF Button */}
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadLoading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-odoo-purple hover:bg-purple-900 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 disabled:opacity-50"
+            title="Download Official Branded PDF"
+          >
+            <Download className={`w-4 h-4 ${downloadLoading ? 'animate-bounce' : ''}`} />
+            <span>{downloadLoading ? 'Generating...' : 'Download PDF'}</span>
+          </button>
+
+          {/* Preview PDF in Modal */}
+          <button
+            onClick={handlePreviewPdf}
+            disabled={downloadLoading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-odoo-purple border border-purple-200 rounded-xl text-xs font-semibold transition-all"
+            title="Preview PDF Document"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="hidden sm:inline">Preview PDF</span>
+          </button>
+
+          {/* Send Payslip Email (Authorized Users Only) */}
+          {canManagePayroll && isFinalized && (
+            <button
+              onClick={handleOpenEmailModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow-md transition-all active:scale-95"
+              title="Send Payslip Email to Employee"
+            >
+              <Mail className="w-4 h-4" />
+              <span>Send Email</span>
+            </button>
+          )}
+
           {/* Calculation Trace Button */}
           {payslip.calculation_trace && payslip.calculation_trace.length > 0 && (
             <button
               onClick={() => setShowTraceModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-purple-50 text-odoo-purple hover:bg-purple-100 border border-purple-200 rounded-xl text-xs font-bold transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold transition-all"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Calculation Trace ({payslip.calculation_trace.length})</span>
+              <Sparkles className="w-4 h-4 text-odoo-purple" />
+              <span className="hidden md:inline">Trace</span>
             </button>
           )}
 
           {/* Print Button */}
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all"
           >
             <Printer className="w-4 h-4 text-slate-500" />
-            <span>Print</span>
+            <span className="hidden sm:inline">Print</span>
           </button>
 
           {/* Recompute Button (Only if not finalized) */}
@@ -276,13 +447,92 @@ export const PayslipDetailPage: React.FC = () => {
         </div>
       )}
 
+      {/* EMAIL DELIVERY STATUS CARD (Module 11) */}
+      {isFinalized && (
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+          <div className="flex items-center gap-4">
+            <div
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                payslip.email_sent
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                  : 'bg-amber-50 text-amber-600 border border-amber-100'
+              }`}
+            >
+              <Mail className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Email Delivery</span>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                    payslip.email_sent
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {payslip.email_sent ? 'DELIVERED (SENT)' : 'NOT SENT YET'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Recipient:{' '}
+                <strong className="text-slate-800">{empSnap.work_email || 'No email configured'}</strong>
+                {payslip.email_sent_at && (
+                  <>
+                    {' '}• Sent on:{' '}
+                    <span className="font-semibold text-slate-700">
+                      {new Date(payslip.email_sent_at).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenHistoryModal}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all"
+            >
+              <History className="w-3.5 h-3.5 text-slate-500" />
+              <span>View History ({emailLogs.length})</span>
+            </button>
+
+            {canManagePayroll && payslip.email_sent && (
+              <button
+                onClick={handleResendEmail}
+                disabled={actionLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all disabled:opacity-50"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Resend</span>
+              </button>
+            )}
+
+            {canManagePayroll && !payslip.email_sent && (
+              <button
+                onClick={handleOpenEmailModal}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-sm"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Send Now</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main Payslip Document (Printable) */}
       <div className="bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden print:shadow-none print:border-none">
-        
         {/* Document Header */}
         <div className="bg-gradient-to-r from-odoo-purple to-purple-900 text-white p-8 sm:p-10 relative overflow-hidden">
           <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
             <div>
               <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold tracking-widest uppercase mb-1">
@@ -314,7 +564,6 @@ export const PayslipDetailPage: React.FC = () => {
 
         {/* Employee & Snapshot Metadata Cards */}
         <div className="p-6 sm:p-8 bg-slate-50/70 border-b border-slate-200/80 grid grid-cols-1 md:grid-cols-3 gap-6">
-          
           {/* Employee Info */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
             <div className="flex items-center gap-2.5 text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -399,7 +648,6 @@ export const PayslipDetailPage: React.FC = () => {
         {/* Salary Breakdown: Two-Column Earnings & Deductions */}
         <div className="p-6 sm:p-8 space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
             {/* Left Column: Earnings */}
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b-2 border-emerald-500/80 pb-2">
@@ -562,7 +810,231 @@ export const PayslipDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Calculation Trace Modal */}
+      {/* ------------------------------------------------------------- */}
+      {/* 1. SEND EMAIL MODAL                                           */}
+      {/* ------------------------------------------------------------- */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-scaleIn">
+            <div className="p-6 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg">Send Payslip Email</h3>
+                  <p className="text-xs text-slate-500">
+                    Dispatches official PDF attachment to {empSnap.name || payslip.employee_name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-200 transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendEmailSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Recipient Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={emailForm.recipient_email}
+                  onChange={(e) => setEmailForm({ ...emailForm, recipient_email: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                  placeholder="employee@company.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Subject Line
+                </label>
+                <input
+                  type="text"
+                  value={emailForm.subject}
+                  onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
+                  className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-600"
+                  placeholder="Official Payslip..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Custom Message / Note (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={emailForm.custom_message}
+                  onChange={(e) => setEmailForm({ ...emailForm, custom_message: e.target.value })}
+                  className="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-600 resize-none"
+                  placeholder="e.g., Please review your salary slip. For queries, contact HR."
+                />
+              </div>
+
+              <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl text-xs text-blue-900 flex items-center gap-2.5">
+                <FileText className="w-5 h-5 text-blue-600 shrink-0" />
+                <div>
+                  <span className="font-bold">Attached Document:</span>
+                  <p className="text-blue-700">Official encrypted ReportLab PDF will be generated & attached automatically.</p>
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={emailSubmitting}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                >
+                  <Send className={`w-4 h-4 ${emailSubmitting ? 'animate-spin' : ''}`} />
+                  <span>{emailSubmitting ? 'Sending...' : 'Send Payslip Email'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 2. EMAIL DELIVERY HISTORY MODAL (Audit Trail)                 */}
+      {/* ------------------------------------------------------------- */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-scaleIn">
+            <div className="p-6 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-slate-200 text-slate-700 flex items-center justify-center font-bold">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg">Email Delivery Audit Trail</h3>
+                  <p className="text-xs text-slate-500">
+                    Chronological delivery logs and dispatch statuses for Payslip #{payslip.payslip_number}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-200 transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-3">
+              {emailLogs.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
+                  <Mail className="w-8 h-8 text-slate-300" />
+                  <span>No email delivery attempts have been logged for this payslip yet.</span>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
+                  {emailLogs.map((log) => (
+                    <div key={log.id} className="p-4 bg-white hover:bg-slate-50 transition-colors space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                              log.status === 'SENT'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : 'bg-red-100 text-red-800 border border-red-200'
+                            }`}
+                          >
+                            {log.status}
+                          </span>
+                          <span className="font-semibold text-slate-800 text-sm">{log.recipient_email}</span>
+                        </div>
+                        <span className="text-xs text-slate-400 font-medium">
+                          {log.sent_at
+                            ? new Date(log.sent_at).toLocaleString()
+                            : log.failed_at
+                            ? new Date(log.failed_at).toLocaleString()
+                            : log.created_at
+                            ? new Date(log.created_at).toLocaleString()
+                            : '—'}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-600 font-medium">{log.subject}</p>
+
+                      {log.error_message && (
+                        <div className="p-2.5 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200 flex items-center gap-2 mt-1">
+                          <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                          <span>Error: {log.error_message}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="px-5 py-2 bg-odoo-purple text-white text-xs font-semibold rounded-xl hover:bg-purple-900 transition-all"
+              >
+                Close Audit Logs
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 3. PDF PREVIEW MODAL                                          */}
+      {/* ------------------------------------------------------------- */}
+      {showPdfPreviewModal && pdfPreviewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-4xl h-[90vh] rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-scaleIn">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-400" />
+                <span className="font-bold text-sm">Official PDF Document Preview — {payslip.payslip_number}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadPdf}
+                  className="px-3 py-1 bg-odoo-purple hover:bg-purple-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download File</span>
+                </button>
+                <button
+                  onClick={closePdfPreview}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 bg-slate-100">
+              <iframe
+                src={pdfPreviewUrl}
+                title="Payslip PDF Preview"
+                className="w-full h-full border-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 4. CALCULATION TRACE MODAL                                    */}
+      {/* ------------------------------------------------------------- */}
       {showTraceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-scaleIn">
@@ -642,3 +1114,5 @@ export const PayslipDetailPage: React.FC = () => {
     </div>
   );
 };
+
+export default PayslipDetailPage;

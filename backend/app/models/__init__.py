@@ -527,6 +527,8 @@ class Payslip(Base):
     salary_structure = relationship("SalaryStructure")
     lines = relationship("PayslipLine", back_populates="payslip", cascade="all, delete-orphan", order_by="PayslipLine.sequence")
     warnings = relationship("PayrollWarning", back_populates="payslip", cascade="all, delete-orphan")
+    documents = relationship("PayslipDocument", back_populates="payslip", cascade="all, delete-orphan", order_by="desc(PayslipDocument.created_at)")
+    email_logs = relationship("PayslipEmailLog", back_populates="payslip", cascade="all, delete-orphan", order_by="desc(PayslipEmailLog.created_at)")
 
 
 class PayslipLine(Base):
@@ -570,3 +572,43 @@ class PayrollWarning(Base):
     payrun = relationship("Payrun", back_populates="warnings")
     payslip = relationship("Payslip", back_populates="warnings")
     employee = relationship("Employee")
+
+
+# ==========================================
+# 9. Payslip Document & Email Delivery Models (Module 11)
+# ==========================================
+class PayslipDocument(Base):
+    __tablename__ = "payslip_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    payslip_id = Column(Integer, ForeignKey("payslips.id", ondelete="CASCADE"), nullable=False)
+    document_type = Column(String(50), default="PAYSLIP_PDF", nullable=False)
+    file_name = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=False)
+    mime_type = Column(String(100), default="application/pdf", nullable=False)
+    file_size = Column(Integer, default=0)
+    generated_at = Column(DateTime, default=datetime.utcnow)
+    generated_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    payslip = relationship("Payslip", back_populates="documents")
+    generator_user = relationship("User", foreign_keys=[generated_by])
+
+
+class PayslipEmailLog(Base):
+    __tablename__ = "payslip_email_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    payslip_id = Column(Integer, ForeignKey("payslips.id", ondelete="CASCADE"), nullable=False)
+    recipient_email = Column(String(255), nullable=False)
+    subject = Column(String(255), nullable=False)
+    status = Column(String(50), default="SENT", nullable=False)  # SENT, FAILED, QUEUED
+    sent_at = Column(DateTime, nullable=True)
+    failed_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+    sent_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    payslip = relationship("Payslip", back_populates="email_logs")
+    sender_user = relationship("User", foreign_keys=[sent_by])
+
