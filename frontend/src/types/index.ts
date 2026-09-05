@@ -177,20 +177,165 @@ export interface SalaryRule {
   active: boolean;
 }
 
+export type PayrunStatus = 
+  | 'draft' 
+  | 'ready' 
+  | 'processing' 
+  | 'review' 
+  | 'finalized' 
+  | 'failed' 
+  | 'cancelled'
+  | 'computed' 
+  | 'validated' 
+  | 'paid';
+
+export type PayrunEmployeeStatus = 
+  | 'pending' 
+  | 'processing' 
+  | 'success' 
+  | 'failed' 
+  | 'skipped' 
+  | 'excluded';
+
+export interface PayrunEmployee {
+  id: number;
+  payrun_id: number;
+  employee_id: number;
+  employee_code?: string;
+  employee_name?: string;
+  employee_email?: string;
+  department?: string;
+  job_position?: string;
+  employee_type?: string;
+  contract_id?: number;
+  contract_code?: string;
+  salary_structure_name?: string;
+  status: PayrunEmployeeStatus;
+  excluded: boolean;
+  exclusion_reason?: string;
+  worked_days: number;
+  unpaid_leave_days: number;
+  gross_salary: number;
+  total_deductions: number;
+  net_salary: number;
+  employer_contribution_total: number;
+  employer_cost: number;
+  error_code?: string;
+  error_message?: string;
+  calculation_trace?: any[];
+  components?: any[];
+  warnings?: string[];
+  payslip_id?: number;
+  processed_at?: string;
+  created_at?: string;
+}
+
 export interface Payrun {
   id: number;
   name: string;
-  salary_structure_id: number;
-  salary_structure_name: string;
+  company: string;
+  salary_structure_id?: number;
+  salary_structure_name?: string;
   period_start: string;
   period_end: string;
   employee_type: string;
-  status: 'draft' | 'computed' | 'validated' | 'paid';
+  status: PayrunStatus;
+  total_employees: number;
+  successful_employees: number;
+  failed_employees: number;
+  skipped_employees: number;
+  excluded_employees: number;
   employee_count: number;
   warning_count: number;
+  total_gross: number;
+  total_deductions: number;
+  total_net: number;
   total_net_paid: number;
+  total_employer_contributions: number;
+  total_employer_cost: number;
+  created_by_id?: number;
+  created_by_name?: string;
+  created_at: string;
+  updated_at: string;
+  processed_at?: string;
+  finalized_at?: string;
+  employees?: PayrunEmployee[];
   warnings?: PayrollWarning[];
   payslips?: Payslip[];
+}
+
+export interface EligibleEmployeeItem {
+  employee_id: number;
+  employee_code: string;
+  employee_name: string;
+  work_email?: string;
+  department: string;
+  job_position: string;
+  employee_type: string;
+  working_schedule_name?: string;
+  bank_account_no?: string;
+  pan_no?: string;
+  is_eligible: boolean;
+  reason?: string;
+  contract?: {
+    id: number;
+    code: string;
+    name: string;
+    wage_per_month: number;
+    start_date?: string;
+    end_date?: string;
+  };
+  salary_structure?: {
+    id: number;
+    name: string;
+    code: string;
+  };
+}
+
+export interface PayrunEligibilityResponse {
+  company: string;
+  period_start: string;
+  period_end: string;
+  total_employees: number;
+  eligible_count: number;
+  ineligible_count: number;
+  eligible_employees: EligibleEmployeeItem[];
+  ineligible_employees: EligibleEmployeeItem[];
+}
+
+export interface PayrunValidationItem {
+  employee_id: number;
+  employee_code: string;
+  employee_name: string;
+  department: string;
+  is_valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface PayrunValidationResponse {
+  payrun_id: number;
+  status: string;
+  total_selected: number;
+  valid_count: number;
+  warning_count: number;
+  error_count: number;
+  can_process: boolean;
+  items: PayrunValidationItem[];
+}
+
+export interface PayrunStatusResponse {
+  payrun_id: number;
+  status: PayrunStatus;
+  total_employees: number;
+  successful_employees: number;
+  failed_employees: number;
+  excluded_employees: number;
+  total_gross: number;
+  total_deductions: number;
+  total_net: number;
+  processed_at?: string;
+  finalized_at?: string;
 }
 
 export interface Payslip {

@@ -69,9 +69,24 @@ class ComputationType(str, enum.Enum):
 
 class PayrunStatus(str, enum.Enum):
     DRAFT = "draft"
+    READY = "ready"
+    PROCESSING = "processing"
+    REVIEW = "review"
+    FINALIZED = "finalized"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    # Legacy / alias
     COMPUTED = "computed"
     VALIDATED = "validated"
     PAID = "paid"
+
+class PayrunEmployeeStatus(str, enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SUCCESS = "success"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    EXCLUDED = "excluded"
 
 class PayslipStatus(str, enum.Enum):
     DRAFT = "draft"
@@ -378,21 +393,84 @@ class Payrun(Base):
     __tablename__ = "payruns"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(150), nullable=False)  # February 2026 Payrun
-    salary_structure_id = Column(Integer, ForeignKey("salary_structures.id", ondelete="RESTRICT"), nullable=False)
+    name = Column(String(150), nullable=False)  # September 2026 Payroll
+    company = Column(String(100), default="PeoplePay360 Inc.", nullable=False)
+    salary_structure_id = Column(Integer, ForeignKey("salary_structures.id", ondelete="RESTRICT"), nullable=True)
     period_start = Column(Date, nullable=False)
     period_end = Column(Date, nullable=False)
     employee_type = Column(String(50), default="All")
     status = Column(String(50), default=PayrunStatus.DRAFT.value)
+    
+    total_employees = Column(Integer, default=0)
+    successful_employees = Column(Integer, default=0)
+    failed_employees = Column(Integer, default=0)
+    skipped_employees = Column(Integer, default=0)
+    excluded_employees = Column(Integer, default=0)
+    
+    # Backward compatible fields
     employee_count = Column(Integer, default=0)
     warning_count = Column(Integer, default=0)
     total_net_paid = Column(Float, default=0.0)
+    
+    total_gross = Column(Float, default=0.0)
+    total_deductions = Column(Float, default=0.0)
+    total_net = Column(Float, default=0.0)
+    total_employer_contributions = Column(Float, default=0.0)
+    total_employer_cost = Column(Float, default=0.0)
+    
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    processed_at = Column(DateTime, nullable=True)
+    finalized_at = Column(DateTime, nullable=True)
+
+    salary_structure = relationship("SalaryStructure", back_populates="payruns")
+    payrun_employees = relationship("PayrunEmployee", back_populates="payrun", cascade="all, delete-orphan")
+    payslips = relationship("Payslip", back_populates="payrun", cascade="all, delete-orphan")
+    warnings = relationship("PayrollWarning", back_populates="payrun", cascade="all, delete-orphan")
+    created_by_user = relationship("User", foreign_keys=[created_by_id])
+
+
+class PayrunEmployee(Base):
+    __tablename__ = "payrun_employees"
+
+    id = Column(Integer, primary_key=True, index=True)
+    payrun_id = Column(Integer, ForeignKey("payruns.id", ondelete="CASCADE"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    contract_id = Column(Integer, ForeignKey("contracts.id", ondelete="SET NULL"), nullable=True)
+    status = Column(String(50), default=PayrunEmployeeStatus.PENDING.value)
+    excluded = Column(Boolean, default=False)
+    exclusion_reason = Column(String(255), nullable=True)
+    
+    worked_days = Column(Float, default=0.0)
+    unpaid_leave_days = Column(Float, default=0.0)
+    
+    gross_salary = Column(Float, default=0.0)
+    total_deductions = Column(Float, default=0.0)
+    net_salary = Column(Float, default=0.0)
+    employer_contribution_total = Column(Float, default=0.0)
+    employer_cost = Column(Float, default=0.0)
+    
+    error_code = Column(String(100), nullable=True)
+    error_message = Column(Text, nullable=True)
+    
+    calculation_trace = Column(JSON, nullable=True)
+    components = Column(JSON, nullable=True)
+    warnings = Column(JSON, nullable=True)
+    
+    payslip_id = Column(Integer, ForeignKey("payslips.id", ondelete="SET NULL"), nullable=True)
+    processed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    salary_structure = relationship("SalaryStructure", back_populates="payruns")
-    payslips = relationship("Payslip", back_populates="payrun", cascade="all, delete-orphan")
-    warnings = relationship("PayrollWarning", back_populates="payrun", cascade="all, delete-orphan")
+    payrun = relationship("Payrun", back_populates="payrun_employees")
+    employee = relationship("Employee")
+    contract = relationship("Contract")
+    payslip = relationship("Payslip")
+
+    __table_args__ = (
+        UniqueConstraint("payrun_id", "employee_id", name="uq_payrun_employee"),
+    )
 
 
 class Payslip(Base):

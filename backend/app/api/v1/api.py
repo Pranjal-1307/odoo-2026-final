@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     salary_structures,
     salary_rules,
     salary_engine,
+    payruns,
 )
 
 api_router = APIRouter()
@@ -25,6 +26,7 @@ api_router.include_router(salary_structures.router, prefix="/payroll/salary-stru
 api_router.include_router(salary_rules.router, prefix="/payroll/salary-rules", tags=["Salary Rules"])
 api_router.include_router(salary_engine.router, prefix="/payroll", tags=["Salary Rules Engine"])
 api_router.include_router(salary_engine.router, prefix="/payroll/salary-engine", tags=["Salary Rules Engine"])
+api_router.include_router(payruns.router, prefix="/payroll/payruns", tags=["Payrun Wizard & Processing"])
 
 
 

@@ -39,9 +39,28 @@ def migrate_columns():
                 ("employer_cost_flag", "BOOLEAN DEFAULT 0"),
                 ("description", "TEXT"),
             ]
-            for col, col_type in rule_cols_to_add:
-                if col not in rule_cols:
-                    conn.exec_driver_sql(f"ALTER TABLE salary_rules ADD COLUMN {col} {col_type}")
+            # Check payruns table
+            payrun_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(payruns)").fetchall()}
+            payrun_cols_to_add = [
+                ("company", "VARCHAR(100) DEFAULT 'PeoplePay360 Inc.'"),
+                ("total_employees", "INTEGER DEFAULT 0"),
+                ("successful_employees", "INTEGER DEFAULT 0"),
+                ("failed_employees", "INTEGER DEFAULT 0"),
+                ("skipped_employees", "INTEGER DEFAULT 0"),
+                ("excluded_employees", "INTEGER DEFAULT 0"),
+                ("total_gross", "FLOAT DEFAULT 0.0"),
+                ("total_deductions", "FLOAT DEFAULT 0.0"),
+                ("total_net", "FLOAT DEFAULT 0.0"),
+                ("total_employer_contributions", "FLOAT DEFAULT 0.0"),
+                ("total_employer_cost", "FLOAT DEFAULT 0.0"),
+                ("created_by_id", "INTEGER"),
+                ("processed_at", "DATETIME"),
+                ("finalized_at", "DATETIME"),
+            ]
+            for col, col_type in payrun_cols_to_add:
+                if col not in payrun_cols:
+                    conn.exec_driver_sql(f"ALTER TABLE payruns ADD COLUMN {col} {col_type}")
+
             conn.commit()
     except Exception as e:
         print(f"Migration notice: {e}")

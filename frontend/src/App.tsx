@@ -25,6 +25,9 @@ import { SalaryStructuresPage } from './pages/SalaryStructuresPage';
 import { SalaryStructureFormPage } from './pages/SalaryStructureFormPage';
 import { SalaryRulesPage } from './pages/SalaryRulesPage';
 import { SalaryRuleFormPage } from './pages/SalaryRuleFormPage';
+import { PayrunsPage } from './pages/PayrunsPage';
+import { PayrunWizardPage } from './pages/PayrunWizardPage';
+import { PayrunDetailPage } from './pages/PayrunDetailPage';
 
 
 export const App: React.FC = () => {
@@ -247,7 +250,39 @@ export const App: React.FC = () => {
               path="/payroll/payruns"
               element={
                 <ProtectedRoute allowedRoles={['HR Payroll Manager', 'HR Payroll User', 'Admin']}>
-                  <DashboardPage />
+                  <PayrunsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payroll/payruns/new"
+              element={
+                <ProtectedRoute allowedRoles={['HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <PayrunWizardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payroll/payruns/wizard"
+              element={
+                <ProtectedRoute allowedRoles={['HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <PayrunWizardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payroll/payruns/:id"
+              element={
+                <ProtectedRoute allowedRoles={['HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <PayrunDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payroll/payruns/:id/wizard"
+              element={
+                <ProtectedRoute allowedRoles={['HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <PayrunWizardPage />
                 </ProtectedRoute>
               }
             />
