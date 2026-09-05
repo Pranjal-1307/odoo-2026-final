@@ -19,7 +19,7 @@ from app.schemas.salary_structure import (
     LiveComputationRequest,
 )
 from app.schemas.salary_rule import SalaryRuleResponse
-from app.services.salary_engine_service import SalaryEngineService, FormulaEvaluationError
+from app.services.salary_engine_service import SalaryEngineService, FormulaEvaluationError, SalaryEngineException
 
 router = APIRouter()
 
@@ -386,7 +386,7 @@ def preview_salary_structure(
             employee_id=payload.employee_id,
         )
         return SalaryPreviewResponse(**result)
-    except FormulaEvaluationError as e:
+    except (FormulaEvaluationError, SalaryEngineException) as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Salary calculation simulation failed: {str(e)}"
@@ -417,8 +417,9 @@ def preview_live_computation(
             unpaid_leave_days=payload.unpaid_leave_days,
         )
         return SalaryPreviewResponse(**result)
-    except FormulaEvaluationError as e:
+    except (FormulaEvaluationError, SalaryEngineException) as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Rule calculation error: {str(e)}"
         )
+

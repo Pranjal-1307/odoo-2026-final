@@ -354,10 +354,11 @@ def test_12_contract_integration():
     assert contracts_res.status_code == 200
     contract_items = contracts_res.json()["items"]
     assert len(contract_items) >= 1
-    running_contract = next((c for c in contract_items if c["status"] == "running"), contract_items[0])
+    running_contract = next((c for c in contract_items if c.get("wage_per_month") == 95000.0 and c["status"] == "running"), contract_items[0])
     
     struct_id = running_contract["salary_structure_id"]
     wage = running_contract["wage_per_month"]
+
     
     preview_res = client.post(f"/api/v1/payroll/salary-structures/{struct_id}/preview", json={
         "contract_wage": wage,

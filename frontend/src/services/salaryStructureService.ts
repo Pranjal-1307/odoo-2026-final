@@ -11,7 +11,10 @@ import type {
   SalaryPreviewRequest,
   SalaryPreviewResponse,
   LiveComputationRequest,
+  PayrollCalculatePreviewRequest,
+  PayrollCalculatePreviewResponse,
 } from '../types/salaryStructure';
+
 
 export const salaryStructureService = {
   // Structures
@@ -102,4 +105,11 @@ export const salaryStructureService = {
   reorderRules: async (rules: { id: number; sequence: number }[]): Promise<void> => {
     await apiClient.post('/payroll/salary-rules/reorder', { rules });
   },
+
+  // Engine Preview with Employee & Period
+  calculatePayrollPreview: async (payload: PayrollCalculatePreviewRequest): Promise<PayrollCalculatePreviewResponse> => {
+    const response = await apiClient.post('/payroll/calculate-preview', payload);
+    return response.data;
+  },
 };
+

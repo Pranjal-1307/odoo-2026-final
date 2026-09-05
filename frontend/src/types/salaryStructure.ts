@@ -171,3 +171,120 @@ export interface SalaryRuleListResponse {
   page: number;
   limit: number;
 }
+
+// ==========================================
+// Salary Rules Engine Calculation Preview Types
+// ==========================================
+export interface PayrollCalculatePreviewRequest {
+  employee_id: number;
+  period_start: string;
+  period_end: string;
+  contract_id?: number;
+  custom_inputs?: Record<string, number>;
+}
+
+export interface RuleExecutionTraceItem {
+  sequence: number;
+  rule_id?: number;
+  rule_code: string;
+  rule_name: string;
+  category: string;
+  computation_type: string;
+  status: 'calculated' | 'skipped' | 'error';
+  condition_applied: boolean;
+  inputs_used: Record<string, any>;
+  formula_or_rate?: string | null;
+  amount: number;
+  appears_on_payslip: boolean;
+  employer_cost_flag: boolean;
+  note?: string | null;
+}
+
+export interface SalaryComponentResult {
+  sequence: number;
+  rule_id?: number;
+  rule_code: string;
+  rule_name: string;
+  category: string;
+  computation_type: string;
+  amount: number;
+  description?: string | null;
+  appears_on_payslip: boolean;
+  employer_cost_flag: boolean;
+  condition_applied: boolean;
+}
+
+export interface EmployeeSummary {
+  id: number;
+  name: string;
+  employee_code: string;
+  work_email?: string | null;
+  department: string;
+  job_position: string;
+  company?: string | null;
+}
+
+export interface ContractSummary {
+  id: number;
+  contract_code: string;
+  name: string;
+  wage_per_month: number;
+  start_date: string;
+  end_date?: string | null;
+  status: string;
+  salary_structure_id: number;
+}
+
+export interface StructureSummary {
+  id: number;
+  name: string;
+  code: string;
+  pay_frequency: string;
+  active: boolean;
+}
+
+export interface AttendanceSummary {
+  scheduled_days: number;
+  worked_days: number;
+  absent_days: number;
+  total_worked_hours: number;
+  overtime_hours: number;
+  late_minutes: number;
+}
+
+export interface TimeOffSummary {
+  paid_leave_days: number;
+  unpaid_leave_days: number;
+  total_leave_days: number;
+  leave_records_count: number;
+}
+
+export interface PeriodSummary {
+  start_date: string;
+  end_date: string;
+  days_in_period: number;
+}
+
+export interface PayrollCalculatePreviewResponse {
+  mode: string;
+  status: 'SUCCESS' | 'WARNING' | 'FAILED' | string;
+  employee: EmployeeSummary;
+  contract: ContractSummary;
+  structure: StructureSummary;
+  period: PeriodSummary;
+  attendance: AttendanceSummary;
+  time_off: TimeOffSummary;
+  basic_salary: number;
+  allowance_total: number;
+  earning_total: number;
+  gross_salary: number;
+  total_deductions: number;
+  net_salary: number;
+  employer_contribution_total: number;
+  employer_cost: number;
+  components: SalaryComponentResult[];
+  calculation_trace: RuleExecutionTraceItem[];
+  warnings: string[];
+  context_used: Record<string, any>;
+}
+
