@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     salary_engine,
     payruns,
     payslips,
+    dashboard,
 )
 
 api_router = APIRouter()
@@ -30,6 +31,8 @@ api_router.include_router(salary_engine.router, prefix="/payroll/salary-engine",
 api_router.include_router(payruns.router, prefix="/payroll/payruns", tags=["Payrun Wizard & Processing"])
 api_router.include_router(payslips.router, prefix="/payroll/payslips", tags=["Payslip Computation"])
 api_router.include_router(payslips.router, prefix="/payslips", tags=["Payslip Computation"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Payroll Dashboard"])
+
 
 
 

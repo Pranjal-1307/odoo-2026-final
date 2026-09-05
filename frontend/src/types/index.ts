@@ -502,4 +502,155 @@ export interface PayrollWarning {
   is_resolved: boolean;
 }
 
+// Module 12: Dashboard Types
+export interface EmployeeKpiSummary {
+  total: number;
+  active: number;
+  on_leave: number;
+  inactive: number;
+  new_this_month: number;
+  department_counts: Record<string, number>;
+}
+
+export interface ContractKpiSummary {
+  total: number;
+  active: number;
+  expiring_soon: number;
+  draft: number;
+  expired: number;
+}
+
+export interface PayrunSummary {
+  id?: number;
+  name?: string;
+  period?: string;
+  status?: string;
+  total_employees: number;
+  processed: number;
+  successful: number;
+  pending: number;
+  failed: number;
+  skipped: number;
+  excluded: number;
+  progress_percentage: number;
+}
+
+export interface PayrollFinancialSummary {
+  gross_payroll: number;
+  total_deductions: number;
+  net_payroll: number;
+  employer_contributions: number;
+  total_payroll_cost: number;
+  payslips_count: number;
+}
+
+export interface PayrollTrendItem {
+  period: string;
+  month_label: string;
+  gross: number;
+  deductions: number;
+  net: number;
+  employer_cost: number;
+  employee_count: number;
+}
+
+export interface DepartmentPayrollItem {
+  department: string;
+  employee_count: number;
+  gross_amount: number;
+  net_amount: number;
+  percentage_of_total: number;
+}
+
+export interface PendingAlertItem {
+  id: string;
+  type: string;
+  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  title: string;
+  description: string;
+  count: number;
+  action_url: string;
+  action_label: string;
+}
+
+export interface RecentActivityItem {
+  id: string;
+  event_type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  actor_name?: string;
+  entity_type?: string;
+  entity_id?: number;
+}
+
+export interface RecentPayrunItem {
+  id: number;
+  name: string;
+  period: string;
+  status: string;
+  total_employees: number;
+  total_net: number;
+  warning_count: number;
+  finalized_at?: string;
+  created_at: string;
+}
+
+export interface DashboardData {
+  period: string;
+  company: string;
+  user_role: string;
+  can_view_financials: boolean;
+  available_periods: string[];
+  employees: EmployeeKpiSummary;
+  contracts: ContractKpiSummary;
+  payrun?: PayrunSummary;
+  payroll: PayrollFinancialSummary;
+  payroll_trend: PayrollTrendItem[];
+  department_distribution: DepartmentPayrollItem[];
+  alerts: PendingAlertItem[];
+  recent_payruns: RecentPayrunItem[];
+  recent_activity: RecentActivityItem[];
+}
+
+export interface EmployeePayslipItem {
+  id: number;
+  payslip_number: string;
+  period_label: string;
+  period_start: string;
+  period_end: string;
+  gross_salary: number;
+  total_deductions: number;
+  net_salary: number;
+  status: string;
+  has_pdf: boolean;
+  created_at: string;
+}
+
+export interface EmployeeDashboardData {
+  employee_id: number;
+  employee_code: string;
+  name: string;
+  work_email: string;
+  department: string;
+  job_position: string;
+  company: string;
+  status: string;
+  avatar_url?: string;
+  attendance_rate: number;
+  days_present: number;
+  days_late: number;
+  total_worked_hours: number;
+  leave_allocations_total: number;
+  leave_used: number;
+  leave_remaining: number;
+  pending_leave_requests: number;
+  contract_code?: string;
+  wage_per_month?: number;
+  contract_start_date?: string;
+  contract_end_date?: string;
+  recent_payslips: EmployeePayslipItem[];
+}
+
+
 
