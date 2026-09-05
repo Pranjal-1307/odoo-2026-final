@@ -4,32 +4,26 @@ import {
   FileText,
   Plus,
   Search,
-  Filter,
-  ArrowUpDown,
   CheckCircle2,
   Clock,
   AlertTriangle,
   XCircle,
-  Eye,
   Edit,
   X,
   User as UserIcon,
-  Briefcase,
   Building2,
-  Calendar,
-  Layers,
   ChevronLeft,
   ChevronRight,
   ExternalLink
 } from 'lucide-react';
-import { contractService, ContractFilters, ContractListResponse } from '../services/contractService';
-import type { Contract } from '../types';
+import { contractService } from '../services/contractService';
+import type { ContractFilters, ContractListResponse } from '../services/contractService';
 import { useAuth } from '../context/AuthContext';
 
 export const ContractsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { canManageHR, canManagePayroll, user } = useAuth();
+  const { canManageHR } = useAuth();
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

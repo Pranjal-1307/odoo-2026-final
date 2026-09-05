@@ -25,3 +25,15 @@ from app.schemas.contract import (
     ContractOptionsResponse,
     ApplicableContractResponse
 )
+from app.schemas.working_schedule import (
+    WorkingScheduleDayBase,
+    WorkingScheduleDayCreate,
+    WorkingScheduleDayResponse,
+    WorkingScheduleBase,
+    WorkingScheduleCreate,
+    WorkingScheduleUpdate,
+    WorkingScheduleResponse,
+    WorkingScheduleListResponse,
+    ScheduleCalculationRequest,
+    ScheduleCalculationResponse
+)

@@ -16,32 +16,118 @@ def seed_db():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        # 1. Seed Working Schedule
-        standard_schedule = db.query(WorkingSchedule).filter(WorkingSchedule.name == "Standard 40 Hours / Week").first()
-        if not standard_schedule:
-            standard_schedule = WorkingSchedule(
-                name="Standard 40 Hours / Week",
-                company="PeoplePay360 Inc.",
-                timezone="Asia/Kolkata",
-                days_per_week=5,
-                hours_per_week=40.0,
-                status="active"
-            )
-            db.add(standard_schedule)
-            db.flush()
+        # 1. Seed Working Schedules
+        schedules_data = [
+            {
+                "name": "40 Hours / Week",
+                "company": "PeoplePay360 Inc.",
+                "timezone": "Asia/Kolkata",
+                "days_per_week": 5,
+                "hours_per_week": 40.0,
+                "status": "active",
+                "days": [
+                    {"day": "Monday", "start": time(9, 0), "end": time(18, 0), "break": 1.0, "hours": 8.0},
+                    {"day": "Tuesday", "start": time(9, 0), "end": time(18, 0), "break": 1.0, "hours": 8.0},
+                    {"day": "Wednesday", "start": time(9, 0), "end": time(18, 0), "break": 1.0, "hours": 8.0},
+                    {"day": "Thursday", "start": time(9, 0), "end": time(18, 0), "break": 1.0, "hours": 8.0},
+                    {"day": "Friday", "start": time(9, 0), "end": time(18, 0), "break": 1.0, "hours": 8.0},
+                ]
+            },
+            {
+                "name": "Night Shift",
+                "company": "PeoplePay360 Inc.",
+                "timezone": "Asia/Kolkata",
+                "days_per_week": 5,
+                "hours_per_week": 40.0,
+                "status": "active",
+                "days": [
+                    {"day": "Monday", "start": time(22, 0), "end": time(6, 0), "break": 0.0, "hours": 8.0},
+                    {"day": "Tuesday", "start": time(22, 0), "end": time(6, 0), "break": 0.0, "hours": 8.0},
+                    {"day": "Wednesday", "start": time(22, 0), "end": time(6, 0), "break": 0.0, "hours": 8.0},
+                    {"day": "Thursday", "start": time(22, 0), "end": time(6, 0), "break": 0.0, "hours": 8.0},
+                    {"day": "Friday", "start": time(22, 0), "end": time(6, 0), "break": 0.0, "hours": 8.0},
+                ]
+            },
+            {
+                "name": "Retail Weekend",
+                "company": "PeoplePay360 Inc.",
+                "timezone": "Asia/Kolkata",
+                "days_per_week": 6,
+                "hours_per_week": 48.0,
+                "status": "active",
+                "days": [
+                    {"day": "Monday", "start": time(10, 0), "end": time(19, 0), "break": 1.0, "hours": 8.0},
+                    {"day": "Tuesday", "start": time(10, 0), "end": time(19, 0), "break": 1.0, "hours": 8.0},
+                    {"day": "Wednesday", "start": time(10, 0), "end": time(19, 0), "break": 1.0, "hours": 8.0},
+                    {"day": "Thursday", "start": time(10, 0), "end": time(19, 0), "break": 1.0, "hours": 8.0},
+                    {"day": "Friday", "start": time(10, 0), "end": time(19, 0), "break": 1.0, "hours": 8.0},
+                    {"day": "Saturday", "start": time(10, 0), "end": time(19, 0), "break": 1.0, "hours": 8.0},
+                ]
+            },
+            {
+                "name": "Flexible Hybrid",
+                "company": "PeoplePay360 Inc.",
+                "timezone": "Asia/Kolkata",
+                "days_per_week": 5,
+                "hours_per_week": 40.0,
+                "status": "active",
+                "days": [
+                    {"day": "Monday", "start": time(9, 30), "end": time(18, 30), "break": 1.0, "hours": 8.0},
+                    {"day": "Tuesday", "start": time(9, 30), "end": time(18, 30), "break": 1.0, "hours": 8.0},
+                    {"day": "Wednesday", "start": time(9, 30), "end": time(18, 30), "break": 1.0, "hours": 8.0},
+                    {"day": "Thursday", "start": time(9, 30), "end": time(18, 30), "break": 1.0, "hours": 8.0},
+                    {"day": "Friday", "start": time(9, 30), "end": time(18, 30), "break": 1.0, "hours": 8.0},
+                ]
+            },
+            {
+                "name": "Part-time 20h",
+                "company": "PeoplePay360 Inc.",
+                "timezone": "Asia/Kolkata",
+                "days_per_week": 5,
+                "hours_per_week": 20.0,
+                "status": "active",
+                "days": [
+                    {"day": "Monday", "start": time(9, 0), "end": time(13, 0), "break": 0.0, "hours": 4.0},
+                    {"day": "Tuesday", "start": time(9, 0), "end": time(13, 0), "break": 0.0, "hours": 4.0},
+                    {"day": "Wednesday", "start": time(9, 0), "end": time(13, 0), "break": 0.0, "hours": 4.0},
+                    {"day": "Thursday", "start": time(9, 0), "end": time(13, 0), "break": 0.0, "hours": 4.0},
+                    {"day": "Friday", "start": time(9, 0), "end": time(13, 0), "break": 0.0, "hours": 4.0},
+                ]
+            }
+        ]
 
-            days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-            for day in days_of_week:
-                day_entry = WorkingScheduleDay(
-                    schedule_id=standard_schedule.id,
-                    day_of_week=day,
-                    start_time=time(9, 0),
-                    end_time=time(18, 0),
-                    break_hours=1.0,
-                    daily_hours=8.0
+        standard_schedule = None
+        for s_info in schedules_data:
+            existing = db.query(WorkingSchedule).filter(WorkingSchedule.name == s_info["name"]).first()
+            if not existing:
+                new_sched = WorkingSchedule(
+                    name=s_info["name"],
+                    company=s_info["company"],
+                    timezone=s_info["timezone"],
+                    days_per_week=s_info["days_per_week"],
+                    hours_per_week=s_info["hours_per_week"],
+                    status=s_info["status"]
                 )
-                db.add(day_entry)
-            db.flush()
+                db.add(new_sched)
+                db.flush()
+                for d in s_info["days"]:
+                    db.add(WorkingScheduleDay(
+                        schedule_id=new_sched.id,
+                        day_of_week=d["day"],
+                        start_time=d["start"],
+                        end_time=d["end"],
+                        break_hours=d["break"],
+                        daily_hours=d["hours"]
+                    ))
+                db.flush()
+                if s_info["name"] == "40 Hours / Week":
+                    standard_schedule = new_sched
+            else:
+                if s_info["name"] == "40 Hours / Week":
+                    standard_schedule = existing
+        
+        if not standard_schedule:
+            standard_schedule = db.query(WorkingSchedule).first()
 
         # 2. Seed demo employees if not present
         demo_employees = [

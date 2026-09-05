@@ -9,7 +9,6 @@ import {
   X, 
   Users, 
   RefreshCw,
-  Building2,
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';

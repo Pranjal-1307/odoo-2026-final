@@ -44,10 +44,11 @@ export const EmployeeList: React.FC<EmployeeListProps> = ({
   const navigate = useNavigate();
 
   const renderSortIcon = (field: string) => {
+    const isCurrent = sortBy === field;
     return (
       <ArrowUpDown
         className={`w-3.5 h-3.5 inline ml-1 transition-colors ${
-          sortBy === field ? 'text-odoo-purple' : 'text-slate-400 hover:text-slate-600'
+          isCurrent ? (sortOrder === 'asc' ? 'text-odoo-purple' : 'text-odoo-purple rotate-180') : 'text-slate-400 hover:text-slate-600'
         }`}
       />
     );

@@ -53,6 +53,7 @@ export interface Contract {
   name: string;
   employee_id: number;
   employee_name: string;
+  employee_code?: string;
   department?: string;
   job_position?: string;
   start_date: string;
@@ -75,10 +76,15 @@ export interface WorkingSchedule {
   hours_per_week: number;
   status: string;
   days?: WorkingScheduleDay[];
+  employee_count?: number;
+  contract_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface WorkingScheduleDay {
   id?: number;
+  schedule_id?: number;
   day_of_week: string;
   start_time: string;
   end_time: string;

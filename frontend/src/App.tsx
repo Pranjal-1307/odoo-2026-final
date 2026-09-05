@@ -11,6 +11,8 @@ import { EmployeesPage } from './pages/EmployeesPage';
 import { EmployeeFormPage } from './pages/EmployeeFormPage';
 import { ContractsPage } from './pages/ContractsPage';
 import { ContractFormPage } from './pages/ContractFormPage';
+import { WorkingSchedulesPage } from './pages/WorkingSchedulesPage';
+import { WorkingScheduleFormPage } from './pages/WorkingScheduleFormPage';
 
 export const App: React.FC = () => {
   return (
@@ -93,6 +95,35 @@ export const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
+
+            {/* Working Schedules Hub Routes */}
+            <Route
+              path="/working-schedules"
+              element={
+                <ProtectedRoute>
+                  <WorkingSchedulesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/working-schedules/new"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'Admin']}>
+                  <WorkingScheduleFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/working-schedules/:id"
+              element={
+                <ProtectedRoute>
+                  <WorkingScheduleFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/schedules" element={<Navigate to="/working-schedules" replace />} />
+
+            {/* Attendance & Time Off Routes */}
             <Route
               path="/attendance"
               element={
@@ -125,6 +156,8 @@ export const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
+
+            {/* Payroll Routes */}
             <Route
               path="/payroll/payruns"
               element={
@@ -153,14 +186,6 @@ export const App: React.FC = () => {
               path="/payroll/salary-rules"
               element={
                 <ProtectedRoute allowedRoles={['HR Payroll Manager', 'HR Payroll User', 'Admin']}>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/schedules"
-              element={
-                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
                   <DashboardPage />
                 </ProtectedRoute>
               }

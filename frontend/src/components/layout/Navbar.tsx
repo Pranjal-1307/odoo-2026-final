@@ -120,6 +120,14 @@ export const Navbar: React.FC = () => {
                 </NavLink>
               )}
 
+              {/* Working Schedules (HR & Payroll & Admin) */}
+              {canManageHR && (
+                <NavLink to="/working-schedules" className={navLinkClass}>
+                  <Clock className="w-4 h-4" />
+                  <span>Schedules</span>
+                </NavLink>
+              )}
+
               {/* Attendance (All Roles) */}
               <NavLink to="/attendance" className={navLinkClass}>
                 <Clock className="w-4 h-4" />

@@ -6,18 +6,13 @@ import {
   X, 
   Edit3, 
   User, 
-  Building2, 
   Briefcase, 
-  Calendar, 
-  Clock, 
   CreditCard, 
   ShieldAlert, 
   CheckCircle2, 
   AlertCircle,
   PowerOff,
-  RefreshCw,
-  Building,
-  UserCheck
+  RefreshCw
 } from 'lucide-react';
 import { employeeService, type EmployeeOptions } from '../services/employeeService';
 import { EmployeeSmartButtons } from '../components/employees/EmployeeSmartButtons';
@@ -27,7 +22,7 @@ import type { Employee } from '../types';
 export const EmployeeFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, canManageHR, isEmployee } = useAuth();
+  const { canManageHR } = useAuth();
 
   const isNew = !id || id === 'new';
   const employeeId = isNew ? null : parseInt(id, 10);

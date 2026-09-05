@@ -10,11 +10,8 @@ import {
   Save,
   Trash2,
   User as UserIcon,
-  Building2,
-  Briefcase,
   Calendar,
   DollarSign,
-  Layers,
   ChevronRight,
   ExternalLink,
   ShieldAlert,
@@ -22,10 +19,8 @@ import {
 } from 'lucide-react';
 import {
   contractService,
-  ContractOptionsResponse,
-  CreateContractPayload,
-  UpdateContractPayload
 } from '../services/contractService';
+import type { ContractOptionsResponse } from '../services/contractService';
 import type { Contract } from '../types';
 import { useAuth } from '../context/AuthContext';
 
@@ -34,12 +29,12 @@ export const ContractFormPage: React.FC = () => {
   const isNew = !id || id === 'new';
   const contractId = isNew ? null : parseInt(id, 10);
   const navigate = useNavigate();
-  const { canManageHR, canManagePayroll, user } = useAuth();
+  const { canManageHR } = useAuth();
 
   // State
-  const [loading, setLoading] = useState<boolean>(!isNew);
+  const [, setLoading] = useState<boolean>(!isNew);
   const [saving, setSaving] = useState<boolean>(false);
-  const [optionsLoading, setOptionsLoading] = useState<boolean>(true);
+  const [, setOptionsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
