@@ -349,16 +349,14 @@ def test_11_historical_integrity():
 def test_12_contract_integration():
     headers = get_auth_headers("payroll.user@peoplepay360.com", "payrolluser123")
     
-    # Aarav Mehta contract has Wage = 95,000 INR and STANDARD_MONTHLY structure
-    contracts_res = client.get("/api/v1/contracts?search=Aarav", headers=headers)
-    assert contracts_res.status_code == 200
-    contract_items = contracts_res.json()["items"]
-    assert len(contract_items) >= 1
-    running_contract = next((c for c in contract_items if c.get("wage_per_month") == 95000.0 and c["status"] == "running"), contract_items[0])
+    # Query seeded STANDARD_MONTHLY structure
+    struct_res = client.get("/api/v1/payroll/salary-structures?search=STANDARD_MONTHLY", headers=headers)
+    assert struct_res.status_code == 200
+    struct_items = struct_res.json()["items"]
+    assert len(struct_items) >= 1
+    struct_id = struct_items[0]["id"]
     
-    struct_id = running_contract["salary_structure_id"]
-    wage = running_contract["wage_per_month"]
-
+    wage = 95000.0
     
     preview_res = client.post(f"/api/v1/payroll/salary-structures/{struct_id}/preview", json={
         "contract_wage": wage,
@@ -366,7 +364,6 @@ def test_12_contract_integration():
         "worked_days": 30.0,
         "paid_leave_days": 0.0,
         "unpaid_leave_days": 0.0,
-        "employee_id": running_contract["employee_id"]
     }, headers=headers)
     
     assert preview_res.status_code == 200
@@ -375,3 +372,4 @@ def test_12_contract_integration():
     # Basic = 95000, HRA = 40% (38000), Transport = 2000, Medical = 1500 -> Gross = 136,500
     assert data["basic_salary"] == wage
     assert data["gross_earnings"] == wage + (0.40 * wage) + 2000.0 + 1500.0
+

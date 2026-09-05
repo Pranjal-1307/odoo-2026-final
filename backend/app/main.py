@@ -1,10 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.session import engine, Base
 import app.models  # Import models to ensure they register with Base
 from app.api.v1.api import api_router
 from app.db.seed import seed_db
+from app.core.exceptions import BusinessRuleException
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
@@ -18,6 +20,21 @@ app = FastAPI(
     version="1.0.0",
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+@app.exception_handler(BusinessRuleException)
+async def business_rule_exception_handler(request: Request, exc: BusinessRuleException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "code": exc.code,
+            "message": exc.message,
+            "detail": exc.message,
+            "entity_type": exc.entity_type,
+            "entity_id": exc.entity_id,
+        }
+    )
+
 
 # Set up CORS
 if settings.BACKEND_CORS_ORIGINS:

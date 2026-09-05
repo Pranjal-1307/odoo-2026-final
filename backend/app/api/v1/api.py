@@ -13,6 +13,8 @@ from app.api.v1.endpoints import (
     payruns,
     payslips,
     dashboard,
+    audit_logs,
+    integration,
 )
 
 api_router = APIRouter()
@@ -32,6 +34,9 @@ api_router.include_router(payruns.router, prefix="/payroll/payruns", tags=["Payr
 api_router.include_router(payslips.router, prefix="/payroll/payslips", tags=["Payslip Computation"])
 api_router.include_router(payslips.router, prefix="/payslips", tags=["Payslip Computation"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Payroll Dashboard"])
+api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["Audit Trail"])
+api_router.include_router(integration.router, prefix="/integration", tags=["System Integration"])
+
 
 
 

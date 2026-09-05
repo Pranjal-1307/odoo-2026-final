@@ -612,3 +612,27 @@ class PayslipEmailLog(Base):
     payslip = relationship("Payslip", back_populates="email_logs")
     sender_user = relationship("User", foreign_keys=[sent_by])
 
+
+# ==========================================
+# 10. Audit Trail Log Model (Module 13)
+# ==========================================
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company = Column(String(100), default="PeoplePay360 Inc.", nullable=False, index=True)
+    actor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    actor_name = Column(String(150), nullable=True)
+    action = Column(String(100), nullable=False, index=True)  # e.g., EMPLOYEE_CREATED, CONTRACT_ACTIVATED, PAYRUN_PROCESSED, PAYSLIP_FINALIZED
+    entity_type = Column(String(50), nullable=False, index=True)  # employee, contract, schedule, attendance, time_off, salary_structure, salary_rule, payrun, payslip
+    entity_id = Column(Integer, nullable=True, index=True)
+    entity_code = Column(String(100), nullable=True)
+    old_value = Column(JSON, nullable=True)
+    new_value = Column(JSON, nullable=True)
+    details = Column(Text, nullable=True)
+    ip_address = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    actor = relationship("User", foreign_keys=[actor_id])
+
+

@@ -31,6 +31,7 @@ from app.schemas.employee import (
     EmployeeOption,
     EmployeeOptionsResponse
 )
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -329,6 +330,20 @@ def create_employee(
     db.commit()
     db.refresh(new_emp)
 
+    # Module 13: Audit Trail Logging
+    AuditService.log_action(
+        db=db,
+        company=new_emp.company,
+        action="EMPLOYEE_CREATED",
+        entity_type="employee",
+        entity_id=new_emp.id,
+        entity_code=new_emp.employee_code,
+        actor_id=current_user.id,
+        actor_name=current_user.username,
+        new_value={"name": new_emp.name, "email": new_emp.work_email, "department": new_emp.department, "status": new_emp.status},
+        details=f"Created employee profile for {new_emp.name} ({new_emp.employee_code})"
+    )
+
     return map_employee_to_detail_response(new_emp)
 
 @router.get("/{id}", response_model=EmployeeDetailResponse)
@@ -444,6 +459,19 @@ def update_employee(
     db.commit()
     db.refresh(emp)
 
+    # Module 13: Audit Trail Logging
+    AuditService.log_action(
+        db=db,
+        company=emp.company,
+        action="EMPLOYEE_UPDATED",
+        entity_type="employee",
+        entity_id=emp.id,
+        entity_code=emp.employee_code,
+        actor_id=current_user.id,
+        actor_name=current_user.username,
+        details=f"Updated profile for employee {emp.name} ({emp.employee_code})"
+    )
+
     return map_employee_to_detail_response(emp)
 
 @router.patch("/{id}/status", response_model=EmployeeDetailResponse)
@@ -463,9 +491,25 @@ def update_employee_status(
             detail=f"Employee with ID {id} not found."
         )
 
+    old_status = emp.status
     emp.status = status_in.status
     db.commit()
     db.refresh(emp)
+
+    # Module 13: Audit Trail Logging
+    AuditService.log_action(
+        db=db,
+        company=emp.company,
+        action="EMPLOYEE_STATUS_CHANGED",
+        entity_type="employee",
+        entity_id=emp.id,
+        entity_code=emp.employee_code,
+        actor_id=current_user.id,
+        actor_name=current_user.username,
+        old_value={"status": old_status},
+        new_value={"status": status_in.status},
+        details=f"Changed status for {emp.name} from {old_status} to {status_in.status}"
+    )
 
     return map_employee_to_detail_response(emp)
 

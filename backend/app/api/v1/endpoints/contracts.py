@@ -34,6 +34,8 @@ from app.schemas.contract import (
     ContractOptionsResponse,
     ApplicableContractResponse
 )
+from app.core.exceptions import BusinessRuleException, BusinessRuleCode
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -391,12 +393,22 @@ def create_contract(
             detail=f"Employee with ID {contract_in.employee_id} does not exist."
         )
 
-    # 2. Validate salary structure exists
+    # 2. Validate salary structure exists & company match
     salary_structure = db.query(SalaryStructure).filter(SalaryStructure.id == contract_in.salary_structure_id).first()
     if not salary_structure:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Salary Structure with ID {contract_in.salary_structure_id} does not exist."
+        raise BusinessRuleException(
+            message=f"Salary Structure with ID {contract_in.salary_structure_id} does not exist.",
+            code=BusinessRuleCode.SALARY_STRUCTURE_MISSING,
+            entity_type="salary_structure",
+            entity_id=contract_in.salary_structure_id
+        )
+
+    # 2b. Company Match Validation (Module 13 - Section 10 & 83)
+    if salary_structure.company and employee.company and salary_structure.company.strip().lower() != employee.company.strip().lower():
+        raise BusinessRuleException(
+            message=f"Company Mismatch: Employee '{employee.name}' belongs to '{employee.company}', but Salary Structure '{salary_structure.name}' belongs to '{salary_structure.company}'.",
+            code=BusinessRuleCode.COMPANY_MISMATCH,
+            entity_type="contract"
         )
 
     # 3. Validate working schedule exists if specified
@@ -432,9 +444,11 @@ def create_contract(
             contract_in.end_date
         )
         if overlap:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot create running contract. This employee already has an active running contract ({overlap.contract_code} - {overlap.name}) overlapping this period."
+            raise BusinessRuleException(
+                message=f"Cannot create running contract. This employee already has an active running contract ({overlap.contract_code} - {overlap.name}) overlapping this period.",
+                code=BusinessRuleCode.CONTRACT_OVERLAP,
+                entity_type="contract",
+                entity_id=overlap.id
             )
 
     # 7. Generate or validate contract code
@@ -469,6 +483,20 @@ def create_contract(
     db.add(contract)
     db.commit()
     db.refresh(contract)
+
+    # Module 13: Audit Trail Logging
+    AuditService.log_action(
+        db=db,
+        company=employee.company or "PeoplePay360 Inc.",
+        action="CONTRACT_CREATED",
+        entity_type="contract",
+        entity_id=contract.id,
+        entity_code=contract.contract_code,
+        actor_id=current_user.id,
+        actor_name=current_user.username,
+        new_value={"name": contract.name, "wage": contract.wage_per_month, "status": contract.status},
+        details=f"Created contract {contract.contract_code} for employee {employee.name}"
+    )
 
     return map_contract_to_response(contract)
 
@@ -630,6 +658,21 @@ def activate_contract(
     contract.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(contract)
+
+    # Module 13: Audit Trail Logging
+    emp_rec = db.query(Employee).filter(Employee.id == contract.employee_id).first()
+    AuditService.log_action(
+        db=db,
+        company=emp_rec.company if emp_rec else "PeoplePay360 Inc.",
+        action="CONTRACT_ACTIVATED",
+        entity_type="contract",
+        entity_id=contract.id,
+        entity_code=contract.contract_code,
+        actor_id=current_user.id,
+        actor_name=current_user.username,
+        new_value={"status": ContractStatus.RUNNING.value},
+        details=f"Activated contract {contract.contract_code} to RUNNING status"
+    )
 
     return map_contract_to_response(contract)
 

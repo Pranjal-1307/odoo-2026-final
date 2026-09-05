@@ -216,6 +216,14 @@ export const Navbar: React.FC = () => {
                 <span>Dashboard</span>
               </NavLink>
 
+              {/* Audit & Integration Center (HR, Payroll & Admin) */}
+              {(canManageHR || canManagePayroll || isAdmin) && (
+                <NavLink to="/audit-logs" className={navLinkClass}>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Audit & Health</span>
+                </NavLink>
+              )}
+
               {/* Admin User Management */}
               {isAdmin && (
                 <NavLink to="/users" className={navLinkClass}>
@@ -223,6 +231,7 @@ export const Navbar: React.FC = () => {
                   <span>Users & Roles</span>
                 </NavLink>
               )}
+
             </nav>
           </div>
 

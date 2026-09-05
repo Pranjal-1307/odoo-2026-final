@@ -23,6 +23,8 @@ from app.models import (
     User,
 )
 from app.services.salary_engine_service import SalaryEngineService, SalaryEngineException
+from app.core.exceptions import BusinessRuleException, BusinessRuleCode
+from app.services.audit_service import AuditService
 
 
 class EligibilityService:
@@ -291,10 +293,26 @@ class PayrunService:
         ).first()
 
         if duplicate:
-            raise ValueError(
-                f"An active Payrun for '{company}' for period {period_start} to {period_end} "
-                f"already exists (#{duplicate.id}: '{duplicate.name}', Status: {duplicate.status.upper()})."
+            raise BusinessRuleException(
+                message=(
+                    f"An active Payrun for '{company}' for period {period_start} to {period_end} "
+                    f"already exists (#{duplicate.id}: '{duplicate.name}', Status: {duplicate.status.upper()})."
+                ),
+                code=BusinessRuleCode.PAYRUN_DUPLICATE,
+                entity_type="payrun",
+                entity_id=duplicate.id
             )
+
+        # Auto-resolve default salary structure if omitted
+        if not salary_structure_id:
+            default_struct = db.query(SalaryStructure).filter(
+                func.lower(SalaryStructure.company) == func.lower(company),
+                SalaryStructure.active == True
+            ).first()
+            if not default_struct:
+                default_struct = db.query(SalaryStructure).filter(SalaryStructure.active == True).first()
+            if default_struct:
+                salary_structure_id = default_struct.id
 
         # 3. Create Payrun
         payrun = Payrun(
@@ -311,6 +329,7 @@ class PayrunService:
         )
         db.add(payrun)
         db.flush()
+
 
         # 4. Find eligible employees and populate PayrunEmployee
         eligibility = EligibilityService.find_eligible_employees(
@@ -355,6 +374,21 @@ class PayrunService:
         
         db.commit()
         db.refresh(payrun)
+
+        # Module 13: Audit Trail Logging
+        AuditService.log_action(
+            db=db,
+            company=payrun.company,
+            action="PAYRUN_CREATED",
+            entity_type="payrun",
+            entity_id=payrun.id,
+            entity_code=payrun.name,
+            actor_id=user.id if user else None,
+            actor_name=user.username if user else None,
+            new_value={"name": payrun.name, "period_start": str(payrun.period_start), "period_end": str(payrun.period_end), "status": payrun.status},
+            details=f"Created Payrun '{payrun.name}' for period {payrun.period_start} to {payrun.period_end}"
+        )
+
         return payrun
 
     @staticmethod
@@ -865,6 +899,21 @@ class PayrunService:
 
         db.commit()
         db.refresh(payrun)
+
+        # Module 13: Audit Trail Logging
+        AuditService.log_action(
+            db=db,
+            company=payrun.company,
+            action="PAYRUN_FINALIZED",
+            entity_type="payrun",
+            entity_id=payrun.id,
+            entity_code=payrun.name,
+            actor_id=user.id if user else None,
+            actor_name=user.username if user else None,
+            new_value={"status": PayrunStatus.FINALIZED.value, "net_total": payrun.total_net, "successful": payrun.successful_employees},
+            details=f"Finalized Payrun '{payrun.name}' ({payrun.successful_employees} payslips locked)"
+        )
+
         return payrun
 
     @staticmethod

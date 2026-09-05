@@ -30,6 +30,7 @@ import { PayrunWizardPage } from './pages/PayrunWizardPage';
 import { PayrunDetailPage } from './pages/PayrunDetailPage';
 import { PayslipsPage } from './pages/PayslipsPage';
 import { PayslipDetailPage } from './pages/PayslipDetailPage';
+import { AuditLogsPage } from './pages/AuditLogsPage';
 
 
 
@@ -53,6 +54,16 @@ export const App: React.FC = () => {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             
+            {/* Audit Trail & Cross-Module Health Center */}
+            <Route
+              path="/audit-logs"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <AuditLogsPage />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Admin-only User & Role Management */}
             <Route
               path="/users"
@@ -62,6 +73,7 @@ export const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
+
 
             {/* Employee Master Hub Routes */}
             <Route

@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 
 class EmployeeBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="Full name of employee")
-    work_email: EmailStr = Field(..., description="Official work email address")
+    work_email: str = Field(..., description="Official work email address")
     phone: Optional[str] = Field(None, max_length=50, description="Contact phone number")
     department: str = Field(..., min_length=1, max_length=100, description="Department name")
     job_position: str = Field(..., min_length=1, max_length=100, description="Job title / position")
@@ -40,9 +40,17 @@ class EmployeeBase(BaseModel):
 class EmployeeCreate(EmployeeBase):
     employee_code: Optional[str] = Field(None, max_length=50, description="Optional custom employee code; auto-generated if omitted")
 
+    @field_validator("work_email")
+    @classmethod
+    def email_must_have_at(cls, v: str) -> str:
+        if not v or "@" not in v:
+            raise ValueError("Valid email address is required")
+        return v.strip().lower()
+
 class EmployeeUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
-    work_email: Optional[EmailStr] = None
+    work_email: Optional[str] = None
+
     phone: Optional[str] = Field(None, max_length=50)
     department: Optional[str] = Field(None, min_length=1, max_length=100)
     job_position: Optional[str] = Field(None, min_length=1, max_length=100)
@@ -91,11 +99,13 @@ class EmployeeResponse(EmployeeBase):
 
     id: int
     employee_code: str
+    work_email: str
     manager_name: Optional[str] = None
     working_schedule_name: Optional[str] = None
     user_id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
 
 class EmployeeDetailResponse(EmployeeResponse):
     # Smart button live counts
