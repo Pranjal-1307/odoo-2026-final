@@ -149,47 +149,7 @@ export interface AttendanceSummary {
 }
 
 
-export interface TimeOffType {
-  id: number;
-  name: string;
-  unit: 'days' | 'hours';
-  requires_allocation: boolean;
-  is_unpaid: boolean;
-  active: boolean;
-  color: string;
-}
-
-export interface TimeOffAllocation {
-  id: number;
-  employee_id: number;
-  employee_name: string;
-  time_off_type_id: number;
-  time_off_type_name: string;
-  allocated_amount: number;
-  taken_amount: number;
-  remaining_amount: number;
-  status: 'draft' | 'approved' | 'refused';
-  approver_id?: number;
-  approver_name?: string;
-  validity_start?: string;
-  validity_end?: string;
-}
-
-export interface TimeOffRequest {
-  id: number;
-  employee_id: number;
-  employee_name: string;
-  time_off_type_id: number;
-  time_off_type_name: string;
-  start_date: string;
-  end_date: string;
-  duration: number;
-  status: 'draft' | 'to_approve' | 'approved' | 'refused' | 'cancelled';
-  reason?: string;
-  approver_id?: number;
-  approver_name?: string;
-  allocation_id?: number;
-}
+export * from './timeOff';
 
 export interface SalaryStructure {
   id: number;

@@ -50,4 +50,26 @@ from app.schemas.attendance import (
     DepartmentAttendanceStats,
     AttendanceSummaryResponse
 )
+from app.schemas.time_off import (
+    TimeOffTypeBase,
+    TimeOffTypeCreate,
+    TimeOffTypeUpdate,
+    TimeOffTypeResponse,
+    TimeOffAllocationBase,
+    TimeOffAllocationCreate,
+    TimeOffAllocationUpdate,
+    TimeOffAllocationResponse,
+    TimeOffRequestBase,
+    TimeOffRequestCreate,
+    TimeOffRequestUpdate,
+    TimeOffRequestApprove,
+    TimeOffRequestRefuse,
+    TimeOffAllocationUsageResponse,
+    TimeOffRequestResponse,
+    DurationCalculateRequest,
+    DurationCalculateResponse,
+    LeaveBalanceItem,
+    EmployeeLeaveBalancesResponse,
+    TimeOffOverviewResponse
+)
 

@@ -233,12 +233,16 @@ class TimeOffType(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)  # Paid Time Off, Sick Leave, Comp Off, Unpaid Leave
-    unit = Column(String(20), default=LeaveUnit.DAYS.value)
+    unit = Column(String(20), default=LeaveUnit.DAYS.value)  # days, hours
     requires_allocation = Column(Boolean, default=True)
     is_unpaid = Column(Boolean, default=False)
+    approval_type = Column(String(50), default="hr")  # no_approval, manager, hr, both
+    payroll_behavior = Column(String(50), default="paid")  # paid, unpaid, not_applicable
     active = Column(Boolean, default=True)
     color = Column(String(20), default="#017E84")
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     allocations = relationship("TimeOffAllocation", back_populates="time_off_type")
     requests = relationship("TimeOffRequest", back_populates="time_off_type")
@@ -257,12 +261,16 @@ class TimeOffAllocation(Base):
     approver_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
     validity_start = Column(Date, nullable=True)
     validity_end = Column(Date, nullable=True)
+    notes = Column(Text, nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    refused_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     employee = relationship("Employee", back_populates="time_off_allocations", foreign_keys=[employee_id])
     approver = relationship("Employee", foreign_keys=[approver_id])
     time_off_type = relationship("TimeOffType", back_populates="allocations")
+    usages = relationship("TimeOffAllocationUsage", back_populates="allocation", cascade="all, delete-orphan")
 
 
 class TimeOffRequest(Base):
@@ -273,11 +281,18 @@ class TimeOffRequest(Base):
     time_off_type_id = Column(Integer, ForeignKey("time_off_types.id", ondelete="RESTRICT"), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
+    start_time = Column(Time, nullable=True)
+    end_time = Column(Time, nullable=True)
     duration = Column(Float, nullable=False)
     status = Column(String(50), default=LeaveRequestStatus.DRAFT.value)
     reason = Column(Text, nullable=True)
+    approval_reason = Column(Text, nullable=True)
+    refusal_reason = Column(Text, nullable=True)
     approver_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
     allocation_id = Column(Integer, ForeignKey("time_off_allocations.id", ondelete="SET NULL"), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    refused_at = Column(DateTime, nullable=True)
+    cancelled_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -285,6 +300,20 @@ class TimeOffRequest(Base):
     approver = relationship("Employee", foreign_keys=[approver_id])
     time_off_type = relationship("TimeOffType", back_populates="requests")
     allocation = relationship("TimeOffAllocation")
+    usages = relationship("TimeOffAllocationUsage", back_populates="request", cascade="all, delete-orphan")
+
+
+class TimeOffAllocationUsage(Base):
+    __tablename__ = "time_off_allocation_usages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    request_id = Column(Integer, ForeignKey("time_off_requests.id", ondelete="CASCADE"), nullable=False)
+    allocation_id = Column(Integer, ForeignKey("time_off_allocations.id", ondelete="CASCADE"), nullable=False)
+    amount_used = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    request = relationship("TimeOffRequest", back_populates="usages")
+    allocation = relationship("TimeOffAllocation", back_populates="usages")
 
 
 # ==========================================

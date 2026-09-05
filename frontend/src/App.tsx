@@ -15,6 +15,12 @@ import { WorkingSchedulesPage } from './pages/WorkingSchedulesPage';
 import { WorkingScheduleFormPage } from './pages/WorkingScheduleFormPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { AttendanceFormPage } from './pages/AttendanceFormPage';
+import { TimeOffRequestsPage } from './pages/TimeOffRequestsPage';
+import { TimeOffRequestFormPage } from './pages/TimeOffRequestFormPage';
+import { TimeOffAllocationsPage } from './pages/TimeOffAllocationsPage';
+import { TimeOffAllocationFormPage } from './pages/TimeOffAllocationFormPage';
+import { TimeOffTypesPage } from './pages/TimeOffTypesPage';
+import { TimeOffTypeFormPage } from './pages/TimeOffTypeFormPage';
 
 
 export const App: React.FC = () => {
@@ -152,27 +158,82 @@ export const App: React.FC = () => {
               }
             />
 
+            {/* Time Off Hub Routes */}
+            <Route
+              path="/time-off"
+              element={<Navigate to="/time-off/requests" replace />}
+            />
             <Route
               path="/time-off/requests"
               element={
                 <ProtectedRoute>
-                  <DashboardPage />
+                  <TimeOffRequestsPage />
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/time-off/requests/new"
+              element={
+                <ProtectedRoute>
+                  <TimeOffRequestFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/time-off/requests/:id"
+              element={
+                <ProtectedRoute>
+                  <TimeOffRequestFormPage />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="/time-off/allocations"
               element={
                 <ProtectedRoute>
-                  <DashboardPage />
+                  <TimeOffAllocationsPage />
                 </ProtectedRoute>
               }
             />
             <Route
+              path="/time-off/allocations/new"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'Admin']}>
+                  <TimeOffAllocationFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/time-off/allocations/:id"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'Admin']}>
+                  <TimeOffAllocationFormPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/time-off/types"
               element={
                 <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
-                  <DashboardPage />
+                  <TimeOffTypesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/time-off/types/new"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'Admin']}>
+                  <TimeOffTypeFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/time-off/types/:id"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'Admin']}>
+                  <TimeOffTypeFormPage />
                 </ProtectedRoute>
               }
             />
