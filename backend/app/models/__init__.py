@@ -59,6 +59,7 @@ class RuleCategory(str, enum.Enum):
     ALLOWANCE = "Allowance"
     GROSS = "Gross"
     DEDUCTION = "Deduction"
+    EMPLOYER_CONTRIBUTION = "Employer Contribution"
     NET = "Net"
 
 class ComputationType(str, enum.Enum):
@@ -323,8 +324,13 @@ class SalaryStructure(Base):
     __tablename__ = "salary_structures"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False)  # Regular Salary, Intern Salary, Contractor
+    name = Column(String(100), unique=True, nullable=False)  # Standard Monthly Salary, Executive, etc.
     code = Column(String(50), unique=True, nullable=False)
+    company = Column(String(100), default="PeoplePay360 Inc.")
+    pay_frequency = Column(String(50), default="monthly")  # monthly, weekly, bi-weekly, semi-monthly
+    description = Column(Text, nullable=True)
+    effective_from = Column(Date, nullable=True)
+    effective_to = Column(Date, nullable=True)
     active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -350,6 +356,13 @@ class SalaryRule(Base):
     percentage_base_code = Column(String(50), nullable=True)  # e.g., 'BASIC'
     percentage_rate = Column(Float, default=0.0)  # e.g., 20.0 for 20%
     formula_expression = Column(Text, nullable=True)  # e.g., 'BASIC + HRA + STD'
+    
+    # Condition & display flags
+    condition_type = Column(String(50), default="always")  # always, conditional
+    condition_formula = Column(Text, nullable=True)  # e.g., 'unpaid_leave_days > 0'
+    appears_on_payslip = Column(Boolean, default=True)
+    employer_cost_flag = Column(Boolean, default=False)
+    description = Column(Text, nullable=True)
     
     active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

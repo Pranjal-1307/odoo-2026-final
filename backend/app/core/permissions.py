@@ -146,6 +146,8 @@ ROLE_PERMISSIONS: Dict[str, Set[str]] = {
         Permissions.ALLOCATION_UPDATE,
         Permissions.ALLOCATION_APPROVE,
         Permissions.ALLOCATION_REFUSE,
+        Permissions.SALARY_STRUCTURE_READ,
+        Permissions.SALARY_RULE_READ,
         Permissions.DASHBOARD_HR,
     },
 

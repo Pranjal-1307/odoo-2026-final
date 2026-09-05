@@ -21,6 +21,10 @@ import { TimeOffAllocationsPage } from './pages/TimeOffAllocationsPage';
 import { TimeOffAllocationFormPage } from './pages/TimeOffAllocationFormPage';
 import { TimeOffTypesPage } from './pages/TimeOffTypesPage';
 import { TimeOffTypeFormPage } from './pages/TimeOffTypeFormPage';
+import { SalaryStructuresPage } from './pages/SalaryStructuresPage';
+import { SalaryStructureFormPage } from './pages/SalaryStructureFormPage';
+import { SalaryRulesPage } from './pages/SalaryRulesPage';
+import { SalaryRuleFormPage } from './pages/SalaryRuleFormPage';
 
 
 export const App: React.FC = () => {
@@ -255,19 +259,54 @@ export const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
+            {/* Salary Structures Hub Routes */}
             <Route
               path="/payroll/salary-structures"
               element={
-                <ProtectedRoute allowedRoles={['HR Payroll Manager', 'HR Payroll User', 'Admin']}>
-                  <DashboardPage />
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <SalaryStructuresPage />
                 </ProtectedRoute>
               }
             />
             <Route
+              path="/payroll/salary-structures/new"
+              element={
+                <ProtectedRoute allowedRoles={['HR Payroll Manager', 'Admin']}>
+                  <SalaryStructureFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payroll/salary-structures/:id"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <SalaryStructureFormPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Salary Rules Hub Routes */}
+            <Route
               path="/payroll/salary-rules"
               element={
-                <ProtectedRoute allowedRoles={['HR Payroll Manager', 'HR Payroll User', 'Admin']}>
-                  <DashboardPage />
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <SalaryRulesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payroll/salary-rules/new"
+              element={
+                <ProtectedRoute allowedRoles={['HR Payroll Manager', 'Admin']}>
+                  <SalaryRuleFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payroll/salary-rules/:id"
+              element={
+                <ProtectedRoute allowedRoles={['HR Manager', 'HR Payroll Manager', 'HR Payroll User', 'Admin']}>
+                  <SalaryRuleFormPage />
                 </ProtectedRoute>
               }
             />

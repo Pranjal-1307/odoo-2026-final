@@ -13,8 +13,43 @@ from app.models import (
     Payrun, Payslip, PayslipLine, PayslipStatus, PayrunStatus, LeaveRequestStatus, AllocationStatus
 )
 
+def migrate_columns():
+    """Ensures newly added columns in models are created in existing SQLite database."""
+    try:
+        with engine.connect() as conn:
+            # Check salary_structures table
+            existing_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(salary_structures)").fetchall()}
+            cols_to_add = [
+                ("company", "VARCHAR(100) DEFAULT 'PeoplePay360 Inc.'"),
+                ("pay_frequency", "VARCHAR(50) DEFAULT 'monthly'"),
+                ("description", "TEXT"),
+                ("effective_from", "DATE"),
+                ("effective_to", "DATE"),
+            ]
+            for col, col_type in cols_to_add:
+                if col not in existing_cols:
+                    conn.exec_driver_sql(f"ALTER TABLE salary_structures ADD COLUMN {col} {col_type}")
+
+            # Check salary_rules table
+            rule_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(salary_rules)").fetchall()}
+            rule_cols_to_add = [
+                ("condition_type", "VARCHAR(50) DEFAULT 'always'"),
+                ("condition_formula", "TEXT"),
+                ("appears_on_payslip", "BOOLEAN DEFAULT 1"),
+                ("employer_cost_flag", "BOOLEAN DEFAULT 0"),
+                ("description", "TEXT"),
+            ]
+            for col, col_type in rule_cols_to_add:
+                if col not in rule_cols:
+                    conn.exec_driver_sql(f"ALTER TABLE salary_rules ADD COLUMN {col} {col_type}")
+            conn.commit()
+    except Exception as e:
+        print(f"Migration notice: {e}")
+
+
 def seed_db():
     Base.metadata.create_all(bind=engine)
+    migrate_columns()
     db = SessionLocal()
     try:
         # 1. Seed Working Schedules
@@ -370,29 +405,178 @@ def seed_db():
                 if emp_id:
                     existing.employee_id = emp_id
 
-        # 4. Seed Salary Structure for Contracts & Payslips
-        salary_structure = db.query(SalaryStructure).filter(SalaryStructure.code == "REG_SAL").first()
+        # 4. Seed Salary Structures & Rules (Section 36, 89 & 91 of 07_SALARY_STRUCTURES.md)
+        salary_structure = db.query(SalaryStructure).filter(SalaryStructure.code == "STANDARD_MONTHLY").first()
         if not salary_structure:
             salary_structure = SalaryStructure(
-                name="Regular Standard Salary Structure",
-                code="REG_SAL",
+                name="Standard Monthly Salary",
+                code="STANDARD_MONTHLY",
+                company="PeoplePay360 Inc.",
+                pay_frequency="monthly",
+                description="Default standard salary structure for full-time employees with standard statutory allowances and deductions.",
                 active=True
             )
             db.add(salary_structure)
             db.flush()
 
-            # Add Standard Salary Rules
+            # The 10 Standard Salary Rules as specified in 07_SALARY_STRUCTURES.md
             rules = [
-                SalaryRule(structure_id=salary_structure.id, name="Basic Salary", code="BASIC", category=RuleCategory.BASIC.value, sequence=10, computation_type=ComputationType.PERCENTAGE.value, percentage_rate=50.0),
-                SalaryRule(structure_id=salary_structure.id, name="House Rent Allowance", code="HRA", category=RuleCategory.ALLOWANCE.value, sequence=20, computation_type=ComputationType.PERCENTAGE.value, percentage_rate=25.0, percentage_base_code="BASIC"),
-                SalaryRule(structure_id=salary_structure.id, name="Special Allowance", code="SPL_ALLOW", category=RuleCategory.ALLOWANCE.value, sequence=30, computation_type=ComputationType.FIXED.value, fixed_amount=5000.0),
-                SalaryRule(structure_id=salary_structure.id, name="Gross Earnings", code="GROSS", category=RuleCategory.GROSS.value, sequence=40, computation_type=ComputationType.FORMULA.value, formula_expression="BASIC + HRA + SPL_ALLOW"),
-                SalaryRule(structure_id=salary_structure.id, name="Provident Fund", code="PF", category=RuleCategory.DEDUCTION.value, sequence=50, computation_type=ComputationType.PERCENTAGE.value, percentage_rate=12.0, percentage_base_code="BASIC"),
-                SalaryRule(structure_id=salary_structure.id, name="Professional Tax", code="PT", category=RuleCategory.DEDUCTION.value, sequence=60, computation_type=ComputationType.FIXED.value, fixed_amount=200.0),
-                SalaryRule(structure_id=salary_structure.id, name="Net Salary", code="NET", category=RuleCategory.NET.value, sequence=70, computation_type=ComputationType.FORMULA.value, formula_expression="GROSS - PF - PT")
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="Basic Salary",
+                    code="BASIC",
+                    category=RuleCategory.BASIC.value,
+                    sequence=100,
+                    computation_type=ComputationType.PERCENTAGE.value,
+                    percentage_rate=100.0,
+                    percentage_base_code="contract_wage",
+                    appears_on_payslip=True,
+                    condition_type="always",
+                    description="Base contractual wage"
+                ),
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="House Rent Allowance",
+                    code="HRA",
+                    category=RuleCategory.ALLOWANCE.value,
+                    sequence=200,
+                    computation_type=ComputationType.PERCENTAGE.value,
+                    percentage_rate=40.0,
+                    percentage_base_code="BASIC",
+                    appears_on_payslip=True,
+                    condition_type="always",
+                    description="40% of Basic Salary"
+                ),
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="Transport Allowance",
+                    code="TRANSPORT",
+                    category=RuleCategory.ALLOWANCE.value,
+                    sequence=300,
+                    computation_type=ComputationType.FIXED.value,
+                    fixed_amount=2000.0,
+                    appears_on_payslip=True,
+                    condition_type="always",
+                    description="Fixed monthly travel allowance"
+                ),
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="Medical Allowance",
+                    code="MEDICAL",
+                    category=RuleCategory.ALLOWANCE.value,
+                    sequence=400,
+                    computation_type=ComputationType.FIXED.value,
+                    fixed_amount=1500.0,
+                    appears_on_payslip=True,
+                    condition_type="always",
+                    description="Fixed monthly medical reimbursement"
+                ),
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="Gross Salary",
+                    code="GROSS",
+                    category=RuleCategory.GROSS.value,
+                    sequence=500,
+                    computation_type=ComputationType.FORMULA.value,
+                    formula_expression="BASIC + HRA + TRANSPORT + MEDICAL",
+                    appears_on_payslip=True,
+                    condition_type="always",
+                    description="Total gross earnings before deductions"
+                ),
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="Provident Fund",
+                    code="PF",
+                    category=RuleCategory.DEDUCTION.value,
+                    sequence=600,
+                    computation_type=ComputationType.PERCENTAGE.value,
+                    percentage_rate=12.0,
+                    percentage_base_code="BASIC",
+                    appears_on_payslip=True,
+                    condition_type="always",
+                    description="12% statutory employee PF contribution"
+                ),
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="Professional Tax",
+                    code="PT",
+                    category=RuleCategory.DEDUCTION.value,
+                    sequence=700,
+                    computation_type=ComputationType.FIXED.value,
+                    fixed_amount=200.0,
+                    appears_on_payslip=True,
+                    condition_type="always",
+                    description="State professional tax deduction"
+                ),
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="Unpaid Leave Deduction",
+                    code="UNPAID_LEAVE",
+                    category=RuleCategory.DEDUCTION.value,
+                    sequence=800,
+                    computation_type=ComputationType.FORMULA.value,
+                    formula_expression="(BASIC / days_in_period) * unpaid_leave_days",
+                    condition_type="conditional",
+                    condition_formula="unpaid_leave_days > 0",
+                    appears_on_payslip=True,
+                    description="Deduction for approved unpaid leaves in period"
+                ),
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="Income Tax",
+                    code="TAX",
+                    category=RuleCategory.DEDUCTION.value,
+                    sequence=900,
+                    computation_type=ComputationType.FIXED.value,
+                    fixed_amount=5000.0,
+                    appears_on_payslip=True,
+                    condition_type="always",
+                    description="Estimated monthly income tax TDS"
+                ),
+                SalaryRule(
+                    structure_id=salary_structure.id,
+                    name="Net Salary",
+                    code="NET",
+                    category=RuleCategory.NET.value,
+                    sequence=1000,
+                    computation_type=ComputationType.FORMULA.value,
+                    formula_expression="GROSS - PF - PT - UNPAID_LEAVE - TAX",
+                    appears_on_payslip=True,
+                    condition_type="always",
+                    description="Net take-home pay after all deductions"
+                )
             ]
             for r in rules:
                 db.add(r)
+            db.flush()
+
+        # Also seed Executive Monthly Salary Structure
+        exec_structure = db.query(SalaryStructure).filter(SalaryStructure.code == "EXEC_MONTHLY").first()
+        if not exec_structure:
+            exec_structure = SalaryStructure(
+                name="Executive Monthly Salary",
+                code="EXEC_MONTHLY",
+                company="PeoplePay360 Inc.",
+                pay_frequency="monthly",
+                description="Salary structure for senior leaders and executives with higher allowances and bonus.",
+                active=True
+            )
+            db.add(exec_structure)
+            db.flush()
+
+            exec_rules = [
+                SalaryRule(structure_id=exec_structure.id, name="Basic Salary", code="BASIC", category=RuleCategory.BASIC.value, sequence=100, computation_type=ComputationType.PERCENTAGE.value, percentage_rate=100.0, percentage_base_code="contract_wage"),
+                SalaryRule(structure_id=exec_structure.id, name="Executive HRA", code="HRA", category=RuleCategory.ALLOWANCE.value, sequence=200, computation_type=ComputationType.PERCENTAGE.value, percentage_rate=50.0, percentage_base_code="BASIC"),
+                SalaryRule(structure_id=exec_structure.id, name="Special Allowance", code="SPL_ALLOW", category=RuleCategory.ALLOWANCE.value, sequence=300, computation_type=ComputationType.FIXED.value, fixed_amount=10000.0),
+                SalaryRule(structure_id=exec_structure.id, name="Executive Medical", code="MEDICAL", category=RuleCategory.ALLOWANCE.value, sequence=400, computation_type=ComputationType.FIXED.value, fixed_amount=5000.0),
+                SalaryRule(structure_id=exec_structure.id, name="Gross Earnings", code="GROSS", category=RuleCategory.GROSS.value, sequence=500, computation_type=ComputationType.FORMULA.value, formula_expression="BASIC + HRA + SPL_ALLOW + MEDICAL"),
+                SalaryRule(structure_id=exec_structure.id, name="Provident Fund", code="PF", category=RuleCategory.DEDUCTION.value, sequence=600, computation_type=ComputationType.PERCENTAGE.value, percentage_rate=12.0, percentage_base_code="BASIC"),
+                SalaryRule(structure_id=exec_structure.id, name="Professional Tax", code="PT", category=RuleCategory.DEDUCTION.value, sequence=700, computation_type=ComputationType.FIXED.value, fixed_amount=200.0),
+                SalaryRule(structure_id=exec_structure.id, name="Income Tax TDS", code="TAX", category=RuleCategory.DEDUCTION.value, sequence=800, computation_type=ComputationType.FIXED.value, fixed_amount=12000.0),
+                SalaryRule(structure_id=exec_structure.id, name="Net Salary", code="NET", category=RuleCategory.NET.value, sequence=900, computation_type=ComputationType.FORMULA.value, formula_expression="GROSS - PF - PT - TAX")
+            ]
+            for er in exec_rules:
+                db.add(er)
             db.flush()
 
         # 5. Seed Leave Types & Allocations for Aarav Mehta (Live smart button count: 2 Allocations, 3 Time Off requests)
@@ -524,6 +708,15 @@ def seed_db():
                     net_salary=84500.0
                 )
                 db.add(payslip)
+                db.flush()
+            else:
+                # Update running contracts to STANDARD_MONTHLY
+                running_contracts = db.query(Contract).filter(
+                    Contract.employee_id == aarav_id,
+                    Contract.status == ContractStatus.RUNNING.value
+                ).all()
+                for rc in running_contracts:
+                    rc.salary_structure_id = salary_structure.id
                 db.flush()
 
             # Seed Attendance records
