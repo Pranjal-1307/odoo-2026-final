@@ -162,6 +162,7 @@ def list_employees(
     working_schedule_id: Optional[int] = Query(None, description="Filter by working schedule"),
     sort_by: Optional[str] = Query("name", description="Field to sort by: name, department, job_position, status, employee_code, created_at"),
     sort_order: Optional[str] = Query("asc", description="Sort direction: asc or desc"),
+    page: Optional[int] = Query(None, ge=1, description="Page number (1-indexed)"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     current_user: User = Depends(get_current_active_user),
@@ -179,16 +180,19 @@ def list_employees(
     # RBAC Self-access constraint for Employee role
     if user_role == "Employee":
         if not current_user.employee_id:
-            return EmployeeListResponse(total=0, active_count=0, inactive_count=0, items=[])
+            return EmployeeListResponse(total=0, active_count=0, inactive_count=0, page=1, limit=limit, total_pages=1, items=[])
         query = query.filter(Employee.id == current_user.employee_id)
         emp = query.first()
         if not emp:
-            return EmployeeListResponse(total=0, active_count=0, inactive_count=0, items=[])
+            return EmployeeListResponse(total=0, active_count=0, inactive_count=0, page=1, limit=limit, total_pages=1, items=[])
         item = map_employee_to_response(emp)
         return EmployeeListResponse(
             total=1,
             active_count=1 if emp.status == "active" else 0,
             inactive_count=1 if emp.status == "inactive" else 0,
+            page=1,
+            limit=limit,
+            total_pages=1,
             items=[item]
         )
 
@@ -247,6 +251,15 @@ def list_employees(
     else:
         query = query.order_by(asc(sort_col))
 
+    # Pagination calculation
+    if page is not None and page >= 1:
+        skip = (page - 1) * limit
+        current_page = page
+    else:
+        current_page = (skip // limit) + 1 if limit > 0 else 1
+
+    total_pages = max(1, (total + limit - 1) // limit) if total > 0 else 1
+
     employees = query.offset(skip).limit(limit).all()
     items = [map_employee_to_response(emp) for emp in employees]
 
@@ -254,6 +267,9 @@ def list_employees(
         total=total,
         active_count=active_count,
         inactive_count=inactive_count,
+        page=current_page,
+        limit=limit,
+        total_pages=total_pages,
         items=items
     )
 

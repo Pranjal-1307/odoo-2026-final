@@ -10,6 +10,7 @@ export interface EmployeeListParams {
   working_schedule_id?: number;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
+  page?: number;
   skip?: number;
   limit?: number;
 }
@@ -18,6 +19,9 @@ export interface EmployeeListResponse {
   total: number;
   active_count: number;
   inactive_count: number;
+  page?: number;
+  limit?: number;
+  total_pages?: number;
   items: Employee[];
 }
 

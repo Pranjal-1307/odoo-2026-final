@@ -135,4 +135,7 @@ class EmployeeListResponse(BaseModel):
     total: int
     active_count: int = 0
     inactive_count: int = 0
+    page: int = 1
+    limit: int = 12
+    total_pages: int = 1
     items: List[EmployeeResponse]
