@@ -1,4 +1,18 @@
+import sys
 import os
+
+# Ensure UTF-8 output even on Windows terminals with non-UTF8 locale
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from datetime import datetime, date, time, timedelta
 from sqlalchemy import func, or_, and_
 from sqlalchemy.orm import Session

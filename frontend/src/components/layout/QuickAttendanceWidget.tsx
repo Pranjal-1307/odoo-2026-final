@@ -109,24 +109,24 @@ export const QuickAttendanceWidget: React.FC = () => {
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-3 bg-white/10 hover:bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-lg text-white border border-white/20 shadow-sm transition-all">
-        <div className="flex items-center gap-1.5 text-xs text-purple-100 font-mono font-medium">
-          <Clock className="w-3.5 h-3.5 text-emerald-300 animate-pulse" />
+      <div className="flex items-center gap-2.5 bg-slate-50 hover:bg-slate-100/90 px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs transition-all">
+        <div className="flex items-center gap-1.5 text-xs text-slate-700 font-mono font-semibold">
+          <Clock className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
           <span>{currentTime || '09:00:00 AM'}</span>
         </div>
 
-        <div className="h-4 w-px bg-white/20" />
+        <div className="h-4 w-px bg-slate-200" />
 
         {isCheckedIn ? (
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 text-xs text-emerald-300 font-mono font-semibold bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-mono font-bold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>{formatElapsed(elapsedSeconds)}</span>
             </div>
             <button
               onClick={handleCheckOut}
               disabled={isLoading}
-              className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs px-2.5 py-1 rounded transition-all font-medium shadow-sm cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs px-2.5 py-1 rounded-lg transition-all font-medium shadow-2xs cursor-pointer disabled:opacity-50"
               title="Click to Check Out"
             >
               {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />}
@@ -137,7 +137,7 @@ export const QuickAttendanceWidget: React.FC = () => {
           <button
             onClick={handleCheckIn}
             disabled={isLoading}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs px-3 py-1 rounded transition-all font-medium shadow-sm cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs px-3 py-1 rounded-lg transition-all font-medium shadow-2xs cursor-pointer disabled:opacity-50"
             title="Click to Check In"
           >
             {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogIn className="w-3 h-3" />}
@@ -147,7 +147,7 @@ export const QuickAttendanceWidget: React.FC = () => {
       </div>
 
       {errorMessage && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 bg-rose-900/95 text-rose-100 text-xs px-3 py-1.5 rounded-md shadow-lg border border-rose-700 whitespace-nowrap animate-in fade-in slide-in-from-top-1">
+        <div className="absolute right-0 top-full mt-1.5 z-50 bg-rose-600 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg border border-rose-700 whitespace-nowrap animate-in fade-in slide-in-from-top-1">
           {errorMessage}
         </div>
       )}
